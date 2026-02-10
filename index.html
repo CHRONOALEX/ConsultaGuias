@@ -3,41 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cronología Redpack - Gantt Pro</title>
+    <title>Cronología Redpack - Gantt Corregido</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { background-color: #f4f7f6; padding: 20px; font-family: 'Segoe UI', sans-serif; }
         .header-ui { background: #000; color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; }
         .card-control { background: white; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); padding: 20px; margin-bottom: 20px; border: none; }
-        .gantt-wrapper { background: white; padding: 15px; border-radius: 12px; border: 1px solid #ddd; margin-bottom: 20px; position: relative; height: 450px; }
-        #loading { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; background: rgba(255,255,255,0.9); padding: 20px; border-radius: 10px; box-shadow: 0 0 15px rgba(0,0,0,0.2); }
+        .gantt-wrapper { background: white; padding: 15px; border-radius: 12px; border: 1px solid #ddd; margin-bottom: 20px; height: 500px; overflow-y: auto; }
+        #loading { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.2); }
     </style>
 </head>
 <body>
 
 <div id="loading" class="text-center">
     <div class="spinner-border text-primary" role="status"></div>
-    <div class="mt-2 fw-bold">Procesando base de datos...</div>
+    <div class="mt-2 fw-bold">Actualizando Cronología...</div>
 </div>
 
-<div class="container-fluid" style="max-width: 1300px;">
+<div class="container-fluid">
     <div class="header-ui text-center">
-        <h2 class="mb-0">Panel de Control Redpack</h2>
+        <h2 class="mb-0">Panel de Control de Guías Redpack</h2>
     </div>
 
     <div class="row g-3">
         <div class="col-md-7">
             <div class="card-control h-100">
-                <label class="form-label fw-bold">Consultar por Guías</label>
-                <textarea id="inputGuias" class="form-control mb-2" rows="2" placeholder="Guía1; Guía2;"></textarea>
-                <button onclick="ejecutarConsulta('guias')" class="btn btn-primary w-100">Cargar Historial de Guías</button>
+                <label class="form-label fw-bold">Consultar Guías</label>
+                <textarea id="inputGuias" class="form-control mb-2" rows="2" placeholder="87389195; 87390102"></textarea>
+                <button onclick="ejecutarConsulta('guias')" class="btn btn-primary w-100">Cargar Historial</button>
             </div>
         </div>
         <div class="col-md-5">
-            <div class="card-control h-100 text-end">
-                <label class="form-label fw-bold w-100 text-start">Navegador de Fechas (Global)</label>
+            <div class="card-control h-100">
+                <label class="form-label fw-bold">Filtrar por Fecha (Global)</label>
                 <input type="date" id="filtroCalendario" class="form-control mb-2">
-                <button onclick="ejecutarConsulta('fecha')" class="btn btn-dark w-100">Filtrar por Fecha</button>
+                <button onclick="ejecutarConsulta('fecha')" class="btn btn-dark w-100">Ver Movimientos del Día</button>
             </div>
         </div>
     </div>
@@ -45,21 +45,21 @@
     <div id="resultadoSeccion" class="d-none mt-4">
         <div class="card-control">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0">Visualización de Línea de Tiempo (Gantt)</h5>
-                <button onclick="exportarExcel()" class="btn btn-success btn-sm">📥 Exportar Excel</button>
+                <h5 class="mb-0">Diagrama de Gantt (Guía vs Tiempo)</h5>
+                <button onclick="exportarExcel()" class="btn btn-success btn-sm">Exportar Reporte</button>
             </div>
             <div class="gantt-wrapper">
                 <canvas id="ganttChart"></canvas>
             </div>
         </div>
 
-        <div class="table-responsive bg-white rounded shadow-sm">
-            <table class="table table-hover align-middle mb-0" id="tablaGuias">
+        <div class="table-responsive bg-white rounded shadow-sm mt-3">
+            <table class="table table-sm table-hover align-middle mb-0" id="tablaGuias">
                 <thead class="table-dark">
                     <tr>
                         <th>Guía</th>
-                        <th>Estado Actual</th>
-                        <th>Fecha Registro</th>
+                        <th>Último Estado</th>
+                        <th>Fecha</th>
                     </tr>
                 </thead>
                 <tbody id="cuerpoTabla"></tbody>
@@ -71,153 +71,138 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
 <script>
     let chartInstance = null;
     const URL_SHEET = 'https://docs.google.com/spreadsheets/d/1w3M--HlDfEsHHmtDZtkPcTFy-K8TX4OsH6mm71Ry12U/gviz/tq?tqx=out:csv&sheet=Hoja1';
 
-    // Normaliza fechas de DD/MM/YYYY o YYYY-MM-DD a un objeto Date real
     function parseDate(dateStr) {
         if (!dateStr) return null;
-        if (dateStr.includes('/')) {
-            const [d, m, y] = dateStr.split('/');
-            return new Date(y, m - 1, d);
-        }
-        return new Date(dateStr + "T00:00:00");
+        let parts = dateStr.includes('/') ? dateStr.split('/') : dateStr.split('-');
+        if (parts[0].length === 4) return new Date(parts[0], parts[1] - 1, parts[2]); // YYYY-MM-DD
+        return new Date(parts[2], parts[1] - 1, parts[0]); // DD/MM/YYYY
     }
 
     async function ejecutarConsulta(modo) {
-        const loading = document.getElementById('loading');
-        loading.style.display = 'block';
-
+        document.getElementById('loading').style.display = 'block';
         try {
             const response = await fetch(URL_SHEET);
             const csvText = await response.text();
             const rawData = parsearCSV(csvText);
             
             let filtrados = [];
-            
             if (modo === 'guias') {
-                const input = document.getElementById('inputGuias').value.trim();
-                if (!input) throw new Error("Ingresa guías para buscar.");
-                const listaGuias = input.split(/[;\n]/).map(g => g.trim());
-                filtrados = rawData.filter(f => listaGuias.includes(f[1]));
+                const lista = document.getElementById('inputGuias').value.split(/[;\n]/).map(g => g.trim()).filter(g => g);
+                filtrados = rawData.filter(f => lista.includes(f[1]));
             } else {
-                const fechaBuscada = document.getElementById('filtroCalendario').value;
-                if (!fechaBuscada) throw new Error("Selecciona una fecha.");
-                
-                // Buscamos qué guías tienen registros en esa fecha (normalizando formatos)
-                const guiasDelDia = rawData.filter(f => {
-                    const fDoc = parseDate(f[0]);
-                    const fBus = parseDate(fechaBuscada);
-                    return fDoc && fBus && fDoc.getTime() === fBus.getTime();
+                const fSel = document.getElementById('filtroCalendario').value;
+                if (!fSel) return alert("Selecciona una fecha");
+                const guiasDia = rawData.filter(f => {
+                    const d = parseDate(f[0]);
+                    return d && d.toISOString().split('T')[0] === fSel;
                 }).map(f => f[1]);
-
-                // Obtenemos el historial completo de las guías encontradas
-                filtrados = rawData.filter(f => guiasDelDia.includes(f[1]));
+                filtrados = rawData.filter(f => guiasDia.includes(f[1]));
             }
 
-            if (filtrados.length === 0) {
-                alert("No se encontraron datos.");
-                return;
-            }
-
-            procesarDatosGantt(filtrados);
+            if (filtrados.length === 0) throw new Error("No se encontraron registros.");
+            renderizarTodo(filtrados);
         } catch (e) {
             alert(e.message);
         } finally {
-            loading.style.display = 'none';
+            document.getElementById('loading').style.display = 'none';
         }
     }
 
-    function procesarDatosGantt(datos) {
+    function renderizarTodo(datos) {
         const mapa = {};
-        let minTime = Infinity;
-        let maxTime = -Infinity;
+        let minT = Infinity, maxT = -Infinity;
 
-        // Limpiar "Comparativa Rombo" y agrupar
         datos.filter(f => f[2] !== "Comparativa Rombo").forEach(f => {
-            const [fechaStr, guia, estado] = f;
-            const fechaObj = parseDate(fechaStr);
-            if (!fechaObj) return;
-
-            const time = fechaObj.getTime();
-            if (time < minTime) minTime = time;
-            if (time > maxTime) maxTime = time;
-
-            if (!mapa[guia]) mapa[guia] = {};
-            mapa[guia][fechaStr] = estado;
+            const date = parseDate(f[0]);
+            if (!date) return;
+            const t = date.getTime();
+            minT = Math.min(minT, t);
+            maxT = Math.max(maxT, t);
+            if (!mapa[f[1]]) mapa[f[1]] = {};
+            mapa[f[1]][f[0]] = f[2];
         });
 
-        const guias = Object.keys(mapa);
-        const datasets = [];
+        const guias = Object.keys(mapa).sort();
+        const chartData = [];
         const cuerpo = document.getElementById('cuerpoTabla');
         cuerpo.innerHTML = "";
 
-        guias.forEach((guia, i) => {
+        guias.forEach(guia => {
             const historial = mapa[guia];
             const fechas = Object.keys(historial).sort((a,b) => parseDate(a) - parseDate(b));
             
-            // Llenar tabla con el último estado
-            const ultimaF = fechas[fechas.length - 1];
-            cuerpo.innerHTML += `<tr><td><b>${guia}</b></td><td><span class="badge bg-primary">${historial[ultimaF]}</span></td><td>${ultimaF}</td></tr>`;
+            // Tabla
+            cuerpo.innerHTML += `<tr><td><b>${guia}</b></td><td>${historial[fechas[fechas.length-1]]}</td><td>${fechas[fechas.length-1]}</td></tr>`;
 
-            // Crear puntos para el Gantt cubriendo el rango
-            let current = new Date(minTime);
-            const end = new Date(maxTime);
-
-            while (current <= end) {
-                const dStr = current.toISOString().split('T')[0];
-                // Buscamos si existe el registro o el último conocido para "rellenar"
-                // En este caso, según pides, si es hueco no lleva etiqueta
-                const displayStr = Object.keys(historial).find(k => parseDate(k).getTime() === current.getTime());
+            // Lógica de llenado para Gantt
+            let actual = new Date(minT);
+            const fin = new Date(maxT);
+            while (actual <= fin) {
+                const dKey = actual.toLocaleDateString('es-ES', {year:'numeric', month:'2-digit', day:'2-digit'}).replace(/\//g, '/');
+                const altKey = actual.toISOString().split('T')[0];
                 
-                if (displayStr) {
-                    datasets.push({
-                        label: guia,
-                        data: [{
-                            x: [current.getTime(), current.getTime() + 86400000],
-                            y: guia,
-                            status: historial[displayStr]
-                        }],
-                        backgroundColor: '#1a73e8',
-                        barPercentage: 0.5
-                    });
-                }
-                current.setDate(current.getDate() + 1);
+                // Buscar estado en formatos posibles
+                const estado = historial[dKey] || historial[altKey.split('-').reverse().join('/')] || historial[altKey];
+
+                chartData.push({
+                    x: [actual.getTime(), actual.getTime() + 86400000],
+                    y: guia,
+                    estado: estado || ""
+                });
+                actual.setDate(actual.getDate() + 1);
             }
         });
 
         document.getElementById('resultadoSeccion').classList.remove('d-none');
-        renderChart(datasets, minTime, maxTime);
+        dibujarGrafico(chartData, guias, minT, maxT);
     }
 
-    function renderChart(datasets, min, max) {
+    function dibujarGrafico(puntos, labelsY, min, max) {
         const ctx = document.getElementById('ganttChart').getContext('2d');
         if (chartInstance) chartInstance.destroy();
 
         chartInstance = new Chart(ctx, {
             type: 'bar',
-            data: { datasets: datasets },
+            data: {
+                datasets: [{
+                    data: puntos,
+                    backgroundColor: (ctx) => ctx.raw && ctx.raw.estado ? '#1a73e8' : 'rgba(0,0,0,0.05)',
+                    borderWidth: 1,
+                    borderColor: '#fff',
+                    barPercentage: 0.8,
+                    categoryPercentage: 0.9
+                }]
+            },
+            plugins: [ChartDataLabels],
             options: {
                 indexAxis: 'y',
                 responsive: true,
                 maintainAspectRatio: false,
+                scales: {
+                    x: { 
+                        type: 'time', 
+                        time: { unit: 'day', displayFormats: { day: 'dd MMM' } },
+                        min: min,
+                        max: max + 86400000
+                    },
+                    y: { labels: labelsY }
+                },
                 plugins: {
                     legend: { display: false },
+                    datalabels: {
+                        color: '#fff',
+                        font: { size: 9, weight: 'bold' },
+                        formatter: (val) => val.estado || "",
+                        display: (ctx) => ctx.raw.estado !== ""
+                    },
                     tooltip: {
-                        callbacks: {
-                            label: (c) => `Estado: ${c.raw.status}`
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        type: 'time',
-                        time: { unit: 'day' },
-                        min: min,
-                        max: max + 86400000,
-                        grid: { color: '#f0f0f0' }
+                        callbacks: { label: (ctx) => `Guía: ${ctx.raw.y} | Estado: ${ctx.raw.estado || 'Sin registro'}` }
                     }
                 }
             }
