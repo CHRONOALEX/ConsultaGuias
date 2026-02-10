@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitor Operativo - Ventana 7/7</title>
+    <title>Monitor Operativo - Vista 5/5</title>
     <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
@@ -52,11 +52,8 @@
             border-right: 1px solid #e2e8f0;
             display: flex;
             flex-direction: column;
-            transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             z-index: 50;
         }
-
-        .sidebar.collapsed { margin-left: -350px; }
 
         .panel-content {
             padding: 20px;
@@ -93,7 +90,28 @@
             box-sizing: border-box;
         }
 
-        /* GANTT (DERECHA) */
+        /* BOTÓN COPIAR */
+        .copy-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
+            margin-top: 5px;
+        }
+
+        .copy-btn:hover { background: #1d4ed8; transform: translateY(-1px); }
+        .copy-btn:active { transform: translateY(0); }
+
+        /* GANTT */
         .gantt-section {
             flex-grow: 1;
             display: flex;
@@ -130,7 +148,7 @@
             position: sticky;
             top: 0;
             z-index: 10;
-            min-width: 160px;
+            min-width: 165px;
         }
 
         .sticky-col {
@@ -138,7 +156,7 @@
             left: 0;
             background: white !important;
             z-index: 20;
-            min-width: 200px;
+            min-width: 210px;
             padding: 10px 15px;
             font-weight: 600;
             border-right: 3px solid #e2e8f0;
@@ -155,9 +173,7 @@
             font-size: 11px;
             font-weight: 500;
             white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            width: 90%;
+            width: 92%;
             margin: 0 auto;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
@@ -181,56 +197,52 @@
             font-size: 10px;
             margin-top: 4px;
         }
-
-        .toggle-btn {
-            background: none;
-            border: 1px solid #444;
-            color: white;
-            cursor: pointer;
-            border-radius: 4px;
-            padding: 4px 10px;
-        }
     </style>
 </head>
 <body>
 
 <header>
-    <div style="display: flex; gap: 15px; align-items: center;">
-        <button class="toggle-btn" onclick="toggleSidebar()">☰</button>
-        <strong>Hoja Maestra <span style="font-weight: 300; opacity: 0.7;">Vista Focalizada 15D</span></strong>
+    <div>
+        <strong>Hoja Maestra <span style="font-weight: 300; opacity: 0.7;">Analista Pro</span></strong>
     </div>
-    <div id="dataStatus" style="font-size: 11px;">Sincronizando...</div>
+    <div id="dataStatus" style="font-size: 11px;">Conectando...</div>
 </header>
 
 <div class="main-layout">
-    <div class="sidebar" id="sideControl">
+    <div class="sidebar">
         <div class="panel-content">
             <div class="control-group">
-                <label>📅 Fecha Central (± 7 días)</label>
+                <label>📅 Fecha de Enfoque</label>
                 <input type="date" id="searchFecha" onchange="processData()">
             </div>
 
             <div class="control-group">
-                <label>🔍 Filtro por Guías</label>
-                <textarea id="searchGuias" placeholder="Pega guías aquí..." rows="12" oninput="processData()"></textarea>
+                <label>🔍 Filtrar por Guías</label>
+                <textarea id="searchGuias" placeholder="Pega guías aquí..." rows="10" oninput="processData()"></textarea>
             </div>
 
             <div class="control-group">
-                <label>📊 Mostrar</label>
-                <select id="limitView" onchange="processData()">
-                    <option value="50">50 Guías</option>
-                    <option value="100">100 Guías</option>
-                </select>
+                <label>📋 Reporte de Datos</label>
+                <button class="copy-btn" onclick="copyReport()">
+                    <span>📋</span> Copiar Guía - Días Iny.
+                </button>
+                <div id="summaryBox" style="font-size: 11px; margin-top: 10px; color: #64748b;"></div>
             </div>
 
-            <div id="summaryBox" style="font-size: 12px; color: var(--primary);"></div>
+            <div class="control-group">
+                <label>📊 Límite</label>
+                <select id="limitView" onchange="processData()">
+                    <option value="50">Top 50</option>
+                    <option value="100">Top 100</option>
+                </select>
+            </div>
         </div>
     </div>
 
     <div class="gantt-section">
         <div class="gantt-card">
             <div id="windowLabel" style="padding: 10px 15px; border-bottom: 1px solid #eee; font-size: 12px; color: #64748b; font-weight: 500;">
-                Calculando ventana...
+                Vista 5/5
             </div>
             <div class="gantt-scroll-container">
                 <div id="ganttTarget"></div>
@@ -243,6 +255,7 @@
     const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1VTGVDxDRf8v60ZxRaYqUwWqEzaqtZRvUvfzmPqDXul4/export?format=csv';
     let rawData = [];
     let groupedData = {};
+    let currentFilteredIds = [];
 
     const colorMap = {
         'Inyección NextDay': 'bg-azul',
@@ -268,15 +281,13 @@
             Papa.parse(csv, {
                 header: true, skipEmptyLines: true,
                 complete: (res) => {
-                    rawData = res.data.filter(r => r.Fecha && r.Guía && r.Servicio && r.Servicio !== 'Comparativa Rombo');
-                    document.getElementById('dataStatus').innerText = 'Datos Actualizados ✅';
+                    rawData = res.data.filter(r => r.Fecha && r.Guía && r.Servicio);
+                    document.getElementById('dataStatus').innerText = 'Datos Online ✅';
                     processData();
                 }
             });
-        } catch (e) { document.getElementById('dataStatus').innerText = 'Error de conexión ❌'; }
+        } catch (e) { document.getElementById('dataStatus').innerText = 'Error ❌'; }
     }
-
-    function toggleSidebar() { document.getElementById('sideControl').classList.toggle('collapsed'); }
 
     function parseDate(s) {
         const [d, m, y] = s.split('/');
@@ -309,99 +320,94 @@
             groupedData[id].duration = Math.ceil((groupedData[id].last - groupedData[id].first) / 86400000) + 1;
         });
 
-        // Filtrar IDs por fecha si existe el input
-        let filteredIds = [...ids];
+        currentFilteredIds = [...ids];
         if (fechaInput) {
             const [y, m, d] = fechaInput.split('-');
             const target = `${d}/${m}/${y}`;
-            filteredIds = ids.filter(id => groupedData[id].history[target]);
+            currentFilteredIds = ids.filter(id => groupedData[id].history[target]);
         }
+        if (currentFilteredIds.length === 0 && fechaInput) currentFilteredIds = ids.slice(0, limit);
+        if (guiasInput.length > 0) currentFilteredIds = currentFilteredIds.filter(id => guiasInput.includes(id));
 
-        // Si no hay resultados para esa fecha, volvemos a mostrar todo pero la ventana se ajustará
-        if (filteredIds.length === 0 && fechaInput) {
-            filteredIds = ids.slice(0, limit);
-        }
-
-        if (guiasInput.length > 0) filteredIds = filteredIds.filter(id => guiasInput.includes(id));
-
-        filteredIds.sort((a, b) => groupedData[b].duration - groupedData[a].duration);
-        renderGantt(filteredIds.slice(0, limit), fechaInput);
+        currentFilteredIds.sort((a, b) => groupedData[b].duration - groupedData[a].duration);
+        renderGantt(currentFilteredIds.slice(0, limit), fechaInput);
     }
 
     function renderGantt(ids, fechaInput) {
         const target = document.getElementById('ganttTarget');
         if (ids.length === 0) {
-            target.innerHTML = "<div style='padding:50px; text-align:center;'>No hay datos disponibles.</div>";
+            target.innerHTML = "<div style='padding:50px; text-align:center;'>Sin datos.</div>";
             return;
         }
 
-        // --- LÓGICA DE VENTANA 15 DÍAS ---
         let centerDate;
         if (fechaInput) {
             const [y, m, d] = fechaInput.split('-');
             centerDate = new Date(y, m - 1, d);
         } else {
-            // Si no hay fecha, buscar la última fecha global en los datos
-            const allLastDates = rawData.map(r => parseDate(r.Fecha));
-            centerDate = new Date(Math.max(...allLastDates));
+            const allDates = rawData.map(r => parseDate(r.Fecha));
+            centerDate = new Date(Math.max(...allDates));
         }
 
-        let startWindow = new Date(centerDate);
-        startWindow.setDate(startWindow.getDate() - 7);
-        let endWindow = new Date(centerDate);
-        endWindow.setDate(endWindow.getDate() + 7);
+        let startW = new Date(centerDate); startW.setDate(startW.getDate() - 5);
+        let endW = new Date(centerDate); endW.setDate(endW.getDate() + 5);
 
         const timeline = [];
-        for (let d = new Date(startWindow); d <= endWindow; d.setDate(d.getDate() + 1)) {
+        for (let d = new Date(startW); d <= endW; d.setDate(d.getDate() + 1)) {
             timeline.push(new Date(d));
         }
 
-        document.getElementById('windowLabel').innerText = `Foco: ${formatDate(centerDate)} | Ventana: ${formatDate(startWindow)} al ${formatDate(endWindow)}`;
+        document.getElementById('windowLabel').innerText = `Ventana 5/5: ${formatDate(startW)} al ${formatDate(endW)}`;
 
         let html = `<table class="gantt-table"><thead><tr><th class="sticky-col">Referencia Guía</th>`;
         timeline.forEach(d => {
-            const isCenter = d.getTime() === centerDate.getTime();
-            html += `<th style="${isCenter ? 'background:#e0f2fe; color:var(--primary); font-weight:bold;' : ''}">${formatDate(d).substring(0,5)}</th>`;
+            const isC = d.getTime() === centerDate.getTime();
+            html += `<th style="${isC ? 'background:#e0f2fe; color:var(--primary); font-weight:700;' : ''}">${formatDate(d).substring(0,5)}</th>`;
         });
         html += `</tr></thead><tbody>`;
 
         ids.forEach(id => {
             const info = groupedData[id];
             const isAlert = info.inyDays > 6;
-
             html += `<tr><td class="sticky-col">
                 <div style="font-size:13px; color:var(--header)">${isAlert ? '⚠️ ' : ''}${id}</div>
-                ${isAlert ? `<div class="badge-alert">Crítico: ${info.inyDays}d inyección</div>` : `<div style="font-size:10px; color:#94a3b8;">Historial: ${info.duration}d</div>`}
+                ${isAlert ? `<div class="badge-alert">Crit: ${info.inyDays}d iny</div>` : `<div style="font-size:10px; color:#94a3b8;">Hist: ${info.duration}d</div>`}
             </td>`;
             
             timeline.forEach(tDate => {
                 const dateKey = formatDate(tDate);
-                const service = info.history[dateKey];
+                const srv = info.history[dateKey];
                 const tTime = tDate.getTime();
-
-                if (service) {
-                    let css = colorMap[service] || 'bg-gap';
-                    if (isAlert && service.includes('Inyección')) css += ' critical-alert';
-                    
-                    let inyAccum = 0;
-                    Object.keys(info.history).forEach(k => {
-                        if (parseDate(k) <= tDate && info.history[k].includes('Inyección')) inyAccum++;
-                    });
-                    
-                    const tooltip = service.includes('Inyección') ? `${service}\nDía ${inyAccum} en inyección` : service;
-                    html += `<td><div class="pill ${css}" title="${tooltip}">${service}</div></td>`;
+                if (srv) {
+                    let css = colorMap[srv] || 'bg-gap';
+                    if (isAlert && srv.includes('Inyección')) css += ' critical-alert';
+                    html += `<td><div class="pill ${css}" title="${srv}">${srv}</div></td>`;
                 } else if (tTime > info.first.getTime() && tTime < info.last.getTime()) {
                     html += `<td><div class="pill bg-gap" style="opacity:0.25"></div></td>`;
-                } else {
-                    html += `<td></td>`;
-                }
+                } else { html += `<td></td>`; }
             });
             html += `</tr>`;
         });
+        target.innerHTML = html + `</tbody></table>`;
+        document.getElementById('summaryBox').innerText = `Visualizando ${ids.length} guías.`;
+    }
 
-        html += `</tbody></table>`;
-        target.innerHTML = html;
-        document.getElementById('summaryBox').innerText = `${ids.length} guías en pantalla.`;
+    function copyReport() {
+        if (currentFilteredIds.length === 0) return alert("No hay datos para copiar.");
+        
+        // Crear copia y ordenar por días de inyección descendente
+        const sortedData = currentFilteredIds
+            .map(id => ({ id: id, iny: groupedData[id].inyDays }))
+            .sort((a, b) => b.iny - a.iny);
+
+        let output = "Guía - Días de inyección\n";
+        sortedData.forEach(item => {
+            output += `${item.id} - ${item.iny}\n`;
+        });
+
+        navigator.clipboard.writeText(output).then(() => {
+            alert("¡Reporte copiado! " + sortedData.length + " guías listas para pegar.");
+        });
     }
 </script>
 </body>
