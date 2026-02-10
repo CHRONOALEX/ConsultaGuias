@@ -3,217 +3,362 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cronología Redpack - Fechas Corregidas</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Analista Experto - Hoja Maestra Gantt</title>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
-        body { background-color: #f4f7f6; padding: 20px; font-family: 'Segoe UI', sans-serif; }
-        .header-ui { background: #000; color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; }
-        .card-control { background: white; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); padding: 20px; margin-bottom: 20px; border: none; }
-        .gantt-wrapper { background: white; padding: 15px; border-radius: 12px; border: 1px solid #ddd; margin-bottom: 20px; height: 600px; }
-        #loading { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.2); border: 1px solid #000; }
+        :root {
+            --azul: #0056b3;
+            --morado: #6f42c1;
+            --rojo: #dc3545;
+            --bg: #f8f9fa;
+            --panel: #ffffff;
+            --border: #dee2e6;
+        }
+
+        body {
+            font-family: 'Lexend', sans-serif;
+            margin: 0;
+            background-color: var(--bg);
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        header {
+            background: #202124;
+            color: white;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: 250px 1fr 250px;
+            gap: 10px;
+            padding: 10px;
+            flex-grow: 1;
+            overflow: hidden;
+        }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            padding: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        h3 { margin-top: 0; font-size: 1rem; border-bottom: 2px solid var(--azul); padding-bottom: 5px; }
+
+        textarea, input, select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        /* Gantt Chart Styles */
+        .gantt-wrapper {
+            overflow: auto;
+            position: relative;
+            background: white;
+        }
+
+        .gantt-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+
+        table.gantt-table {
+            border-collapse: collapse;
+            font-size: 11px;
+            width: max-content;
+        }
+
+        .gantt-table th, .gantt-table td {
+            border: 1px solid #eee;
+            min-width: 40px;
+            height: 30px;
+            text-align: center;
+            padding: 2px;
+        }
+
+        .sticky-col {
+            position: sticky;
+            left: 0;
+            background: white;
+            z-index: 2;
+            min-width: 120px !important;
+            font-weight: bold;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+        }
+
+        .cell-bar {
+            height: 80%;
+            width: 100%;
+            border-radius: 3px;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+
+        /* Colors based on Image 2 */
+        .bg-azul { background-color: var(--azul); }
+        .bg-morado { background-color: var(--morado); }
+        .bg-rojo { background-color: var(--rojo); }
+        .bg-fill { background-color: #e9ecef; } /* For gaps */
+
+        .status-list {
+            list-style: none;
+            padding: 0;
+            overflow-y: auto;
+            font-size: 0.85rem;
+        }
+        .status-list li {
+            padding: 5px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top:0; left:0; width:100%; height:100%;
+            background: rgba(255,255,255,0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
     </style>
 </head>
 <body>
 
-<div id="loading" class="text-center">
-    <div class="spinner-border text-primary" role="status"></div>
-    <div class="mt-2 fw-bold">Optimizando fechas y datos...</div>
-</div>
+<div id="loading" class="loading-overlay">Cargando datos de Google Sheets...</div>
 
-<div class="container-fluid" style="max-width: 1400px;">
-    <div class="header-ui text-center">
-        <h2 class="mb-0">Cronología de Paquetes Redpack</h2>
+<header>
+    <div><strong>Hoja Maestra</strong> - Sistema de Monitoreo</div>
+    <div id="last-update" style="font-size: 0.8rem;"></div>
+</header>
+
+<div class="main-container">
+    <div class="panel">
+        <h3>Buscador por Guías</h3>
+        <p style="font-size: 0.7rem; color: #666;">Pega columnas de Excel, usa espacios o ";"</p>
+        <textarea id="searchGuias" placeholder="Ej: 87371067; 87373136" rows="10"></textarea>
+        <button onclick="processData()" style="background: var(--azul); color:white; border:none; padding:10px; border-radius:4px; cursor:pointer;">Filtrar Guías</button>
+        <div id="guiasCount" style="margin-top:10px; font-size: 0.8rem;"></div>
     </div>
 
-    <div class="row g-3">
-        <div class="col-md-7">
-            <div class="card-control h-100">
-                <label class="form-label fw-bold">1. Consultar por Guías</label>
-                <textarea id="inputGuias" class="form-control mb-2" rows="2" placeholder="87349248; 87389195"></textarea>
-                <button onclick="ejecutarConsulta('guias')" class="btn btn-primary w-100 fw-bold">Cargar Historial</button>
-            </div>
+    <div class="panel">
+        <div class="gantt-controls">
+            <h3>Visualización Gantt</h3>
+            <select id="limitView" style="width: auto;" onchange="processData()">
+                <option value="50">Mostrar 50 guías</option>
+                <option value="100">Mostrar 100 guías</option>
+                <option value="200">Mostrar 200 guías</option>
+                <option value="300">Mostrar 300 guías</option>
+            </select>
         </div>
-        <div class="col-md-5">
-            <div class="card-control h-100">
-                <label class="form-label fw-bold">2. Consultar por Fecha (Global)</label>
-                <input type="date" id="filtroCalendario" class="form-control mb-2">
-                <button onclick="ejecutarConsulta('fecha')" class="btn btn-dark w-100 fw-bold">Ver Movimientos del Día</button>
+        <div class="gantt-wrapper" id="ganttContainer">
             </div>
-        </div>
     </div>
 
-    <div id="resultadoSeccion" class="d-none mt-4">
-        <div class="card-control">
-            <h5 class="mb-3">Diagrama de Gantt (Timeline Real)</h5>
-            <div class="gantt-wrapper">
-                <canvas id="ganttChart"></canvas>
+    <div class="panel">
+        <h3>Filtrar por Fecha</h3>
+        <input type="date" id="searchFecha" onchange="processData()">
+        <div id="fechaResults" class="status-list">
             </div>
-        </div>
-
-        <div class="table-responsive bg-white rounded shadow-sm mt-3">
-            <table class="table table-sm table-hover align-middle mb-0" id="tablaGuias">
-                <thead class="table-dark">
-                    <tr>
-                        <th>Guía</th>
-                        <th>Estado Actual</th>
-                        <th>Fecha Registro</th>
-                    </tr>
-                </thead>
-                <tbody id="cuerpoTabla"></tbody>
-            </table>
-        </div>
     </div>
 </div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
 <script>
-    let chartInstance = null;
-    const URL_SHEET = 'https://docs.google.com/spreadsheets/d/1w3M--HlDfEsHHmtDZtkPcTFy-K8TX4OsH6mm71Ry12U/gviz/tq?tqx=out:csv&sheet=Hoja1';
+    const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1VTGVDxDRf8v60ZxRaYqUwWqEzaqtZRvUvfzmPqDXul4/export?format=csv';
+    let rawData = [];
 
-    // FUNCIÓN DE ARREGLO DE FECHAS: Convierte cualquier string a Date local medianoche
-    function toLocalDate(str) {
-        if (!str) return null;
-        let d, m, y;
-        if (str.includes('/')) {
-            [d, m, y] = str.split('/');
-        } else if (str.includes('-')) {
-            let parts = str.split('-');
-            if (parts[0].length === 4) { [y, m, d] = parts; } 
-            else { [d, m, y] = parts; }
-        }
-        return new Date(y, m - 1, d, 0, 0, 0, 0); // Forzar medianoche local
-    }
+    // Mapeo de colores según imagen 2
+    const colorMap = {
+        'Inyección NextDay': 'bg-azul',
+        'Inyección SameDay': 'bg-morado',
+        'Mal Entregado': 'bg-rojo',
+        'Devolución a Origen / 3 Intentos': 'bg-rojo',
+        'No Manifestado(Rojo) / TBM': 'bg-rojo',
+        'Fuera de Cobertura': 'bg-rojo',
+        'Sobre Dañado': 'bg-rojo',
+        'Sobre sin Contenido': 'bg-rojo'
+    };
 
-    async function ejecutarConsulta(modo) {
-        document.getElementById('loading').style.display = 'block';
+    async function init() {
         try {
-            const response = await fetch(URL_SHEET);
+            const response = await fetch(SHEET_URL);
             const csvText = await response.text();
-            const rawData = parsearCSV(csvText);
             
-            let filtrados = [];
-            if (modo === 'guias') {
-                const lista = document.getElementById('inputGuias').value.split(/[;\n]/).map(g => g.trim()).filter(g => g);
-                filtrados = rawData.filter(f => lista.includes(f[1]));
-            } else {
-                const fSelStr = document.getElementById('filtroCalendario').value; // Formato YYYY-MM-DD del input
-                const fSelDate = toLocalDate(fSelStr);
-                
-                const guiasDelDia = rawData.filter(f => {
-                    const dDoc = toLocalDate(f[0]);
-                    return dDoc && fSelDate && dDoc.getTime() === fSelDate.getTime();
-                }).map(f => f[1]);
-                
-                filtrados = rawData.filter(f => guiasDelDia.includes(f[1]));
-            }
-
-            if (filtrados.length === 0) throw new Error("No hay registros en esa fecha.");
-            renderizarTodo(filtrados);
-        } catch (e) { alert(e.message); } 
-        finally { document.getElementById('loading').style.display = 'none'; }
-    }
-
-    function renderizarTodo(datos) {
-        const mapa = {};
-        let minT = Infinity, maxT = -Infinity;
-
-        datos.filter(f => f[2] !== "Comparativa Rombo").forEach(f => {
-            const dateObj = toLocalDate(f[0]);
-            if (!dateObj) return;
-            const t = dateObj.getTime();
-            minT = Math.min(minT, t);
-            maxT = Math.max(maxT, t);
-
-            if (!mapa[f[1]]) mapa[f[1]] = {};
-            // Guardamos usando el timestamp como llave para evitar errores de formato string
-            mapa[f[1]][t] = f[2]; 
-        });
-
-        const guiasOrdenadas = Object.keys(mapa).sort();
-        const chartData = [];
-        const cuerpo = document.getElementById('cuerpoTabla');
-        cuerpo.innerHTML = "";
-
-        guiasOrdenadas.forEach(guia => {
-            const historial = mapa[guia];
-            const timestamps = Object.keys(historial).map(Number).sort((a,b) => a - b);
-            
-            // Tabla: Último estado
-            const ultT = timestamps[timestamps.length - 1];
-            const ultFechaStr = new Date(ultT).toLocaleDateString('es-ES');
-            cuerpo.innerHTML += `<tr><td><b>${guia}</b></td><td>${historial[ultT]}</td><td>${ultFechaStr}</td></tr>`;
-
-            // Relleno Gantt: Día por día entre el rango global
-            let actual = new Date(minT);
-            const fin = new Date(maxT);
-            while (actual <= fin) {
-                const currentT = actual.getTime();
-                const estado = historial[currentT];
-
-                chartData.push({
-                    x: [currentT, currentT + 86400000],
-                    y: guia,
-                    estado: estado || ""
-                });
-                actual.setDate(actual.getDate() + 1);
-            }
-        });
-
-        document.getElementById('resultadoSeccion').classList.remove('d-none');
-        dibujarGrafico(chartData, guiasOrdenadas, minT, maxT);
-    }
-
-    function dibujarGrafico(puntos, labelsY, min, max) {
-        const ctx = document.getElementById('ganttChart').getContext('2d');
-        if (chartInstance) chartInstance.destroy();
-
-        chartInstance = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                datasets: [{
-                    data: puntos,
-                    backgroundColor: (ctx) => {
-                        const s = (ctx.raw && ctx.raw.estado) ? ctx.raw.estado.toLowerCase() : "";
-                        if (!s) return 'rgba(0,0,0,0.03)';
-                        if (s.includes('nextday')) return '#1a73e8';
-                        if (s.includes('sameday')) return '#8e24aa';
-                        if (s.includes('mal') || s.includes('dev') || s.includes('no m') || s.includes('fuera') || s.includes('dañ') || s.includes('sin c')) return '#d32f2f';
-                        return '#757575';
-                    },
-                    borderWidth: 1, borderColor: '#fff', barPercentage: 0.8
-                }]
-            },
-            plugins: [ChartDataLabels],
-            options: {
-                indexAxis: 'y',
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: { type: 'time', time: { unit: 'day', displayFormats: { day: 'dd MMM' } }, min: min, max: max + 86400000 },
-                    y: { ticks: { font: { size: 10, weight: 'bold' } } }
-                },
-                plugins: {
-                    legend: { display: false },
-                    datalabels: {
-                        color: '#fff', font: { size: 8, weight: 'bold' },
-                        formatter: (val) => val.estado || "",
-                        display: (ctx) => ctx.raw.estado !== ""
-                    }
+            Papa.parse(csvText, {
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    rawData = results.data.filter(row => {
+                        // REGLA: Si falta algún dato en las 3 columnas principales, no mostrar
+                        const hasData = row['Fecha'] && row['Guía'] && row['Servicio'];
+                        // REGLA: Si es Comparativa Rombo, omitir
+                        const isNotRombo = row['Servicio'] !== 'Comparativa Rombo';
+                        return hasData && isNotRombo;
+                    });
+                    
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('last-update').innerText = 'Datos cargados: ' + new Date().toLocaleTimeString();
+                    processData();
                 }
-            }
-        });
+            });
+        } catch (error) {
+            console.error("Error cargando el sheet:", error);
+            alert("No se pudo cargar la información del Google Sheet.");
+        }
     }
 
-    function parsearCSV(str) {
-        return str.split(/\r?\n/).map(linea => {
-            const regex = /,(?=(?:(?:[^"]*"){2})*[^"]*$)/;
-            return linea.split(regex).map(c => c.replace(/^"|"$/g, '').trim());
-        }).slice(1);
+    function parseDate(dateStr) {
+        if(!dateStr) return null;
+        const [d, m, y] = dateStr.split('/');
+        return new Date(y, m - 1, d);
     }
+
+    function formatDate(date) {
+        return date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
+
+    function processData() {
+        const guiasFilter = document.getElementById('searchGuias').value.split(/[\s,;]+/).filter(x => x.length > 0);
+        const fechaFilter = document.getElementById('searchFecha').value;
+        const limit = parseInt(document.getElementById('limitView').value);
+
+        let filtered = [...rawData];
+
+        // Filtro por lista de guías
+        if (guiasFilter.length > 0) {
+            filtered = filtered.filter(row => guiasFilter.includes(row['Guía']));
+        }
+
+        // Agrupar por Guía para obtener estados por día
+        const grouped = {};
+        filtered.forEach(row => {
+            const g = row['Guía'];
+            if (!grouped[g]) grouped[g] = {};
+            
+            // REGLA: Si hay 2 guías el mismo día, muestra el último servicio del día
+            // (Asumimos el orden del sheet como cronológico descendente o ascendente)
+            grouped[g][row['Fecha']] = row['Servicio'];
+        });
+
+        const guiasIds = Object.keys(grouped).slice(0, limit);
+        renderGantt(guiasIds, grouped);
+        renderFechaPanel(fechaFilter);
+    }
+
+    function renderGantt(guiasIds, groupedData) {
+        const container = document.getElementById('ganttContainer');
+        if (guiasIds.length === 0) {
+            container.innerHTML = "<p>No hay datos para mostrar con los filtros seleccionados.</p>";
+            return;
+        }
+
+        // Obtener rango de fechas global para el Gantt
+        let allDates = [];
+        guiasIds.forEach(id => {
+            Object.keys(groupedData[id]).forEach(d => allDates.push(parseDate(d)));
+        });
+        allDates.sort((a, b) => a - b);
+        
+        const minDate = new Date(allDates[0]);
+        const maxDate = new Date(allDates[allDates.length - 1]);
+        
+        // Generar array de todas las fechas en el rango
+        const timeline = [];
+        let curr = new Date(minDate);
+        while (curr <= maxDate) {
+            timeline.push(new Date(curr));
+            curr.setDate(curr.getDate() + 1);
+        }
+
+        let html = `<table class="gantt-table"><thead><tr><th class="sticky-col">Guía</th>`;
+        timeline.forEach(d => {
+            html += `<th>${formatDate(d).substring(0,5)}</th>`;
+        });
+        html += `</tr></thead><tbody>`;
+
+        guiasIds.forEach(id => {
+            html += `<tr><td class="sticky-col">${id}</td>`;
+            
+            let lastKnownService = null;
+            let guideDates = Object.keys(groupedData[id]).map(d => parseDate(d).getTime());
+            let firstDate = Math.min(...guideDates);
+            let lastDate = Math.max(...guideDates);
+
+            timeline.forEach(tDate => {
+                const dateKey = formatDate(tDate);
+                const service = groupedData[id][dateKey];
+                const tTime = tDate.getTime();
+
+                if (service) {
+                    const colorClass = colorMap[service] || 'bg-fill';
+                    html += `<td><div class="cell-bar ${colorClass}" title="${service}">${service.substring(0,8)}</div></td>`;
+                    lastKnownService = service;
+                } else if (tTime > firstDate && tTime < lastDate) {
+                    // REGLA: Rellenar huecos sin etiqueta
+                    const colorClass = colorMap[lastKnownService] || 'bg-fill';
+                    html += `<td><div class="cell-bar ${colorClass}" style="opacity: 0.4;"></div></td>`;
+                } else {
+                    html += `<td></td>`;
+                }
+            });
+            html += `</tr>`;
+        });
+
+        html += `</tbody></table>`;
+        container.innerHTML = html;
+    }
+
+    function renderFechaPanel(filterDate) {
+        const resultsDiv = document.getElementById('fechaResults');
+        if (!filterDate) {
+            resultsDiv.innerHTML = "<p style='color:#999'>Selecciona una fecha para ver el resumen diario.</p>";
+            return;
+        }
+
+        // Convertir YYYY-MM-DD a DD/MM/YYYY
+        const [y, m, d] = filterDate.split('-');
+        const formattedSearch = `${d}/${m}/${y}`;
+
+        const dayData = rawData.filter(row => row['Fecha'] === formattedSearch);
+        
+        if (dayData.length === 0) {
+            resultsDiv.innerHTML = "<li>No hay movimientos en esta fecha.</li>";
+            return;
+        }
+
+        let html = "<ul>";
+        dayData.forEach(row => {
+            html += `<li><strong>${row['Guía']}</strong>: ${row['Servicio']}</li>`;
+        });
+        html += "</ul>";
+        resultsDiv.innerHTML = html;
+    }
+
+    // Iniciar carga
+    init();
 </script>
+
 </body>
 </html>
