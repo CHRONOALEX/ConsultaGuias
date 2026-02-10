@@ -3,19 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Analista Pro - Monitor con Alertas</title>
-    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;600&display=swap" rel="stylesheet">
+    <title>Monitor Operativo - Vista Actual</title>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
         :root {
-            --azul: #0056b3;
-            --morado: #6f42c1;
-            --rojo: #dc3545;
-            --alerta: #ff9800;
-            --bg: #f0f2f5;
+            --primary: #2563eb;
+            --accent: #f59e0b;
+            --danger: #ef4444;
+            --bg: #f1f5f9;
             --panel: #ffffff;
-            --border: #e0e0e0;
-            --header: #1a1c1e;
+            --text-main: #1e293b;
+            --header: #0f172a;
         }
 
         body {
@@ -25,6 +24,7 @@
             height: 100vh;
             display: flex;
             flex-direction: column;
+            color: var(--text-main);
             overflow: hidden;
         }
 
@@ -35,8 +35,8 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-            z-index: 10;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+            z-index: 100;
         }
 
         .main-layout {
@@ -45,174 +45,194 @@
             overflow: hidden;
         }
 
+        /* SIDEBAR IZQUIERDO */
         .sidebar {
-            width: 300px;
+            width: 350px;
             background: var(--panel);
-            border-right: 1px solid var(--border);
-            transition: all 0.3s ease;
+            border-right: 1px solid #e2e8f0;
             display: flex;
             flex-direction: column;
+            z-index: 50;
+        }
+
+        .panel-content {
             padding: 20px;
-            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            height: 100%;
             overflow-y: auto;
         }
 
-        .sidebar.collapsed {
-            width: 0;
-            padding: 0;
-            opacity: 0;
-            pointer-events: none;
+        .control-group {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
         }
 
-        .toggle-btn {
-            background: var(--header);
-            color: white;
-            border: 1px solid #444;
-            padding: 8px 12px;
-            cursor: pointer;
-            border-radius: 4px;
-            font-size: 0.8rem;
+        label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #64748b;
+            margin-bottom: 8px;
+            text-transform: uppercase;
         }
 
+        textarea, input, select {
+            width: 100%;
+            border: 1px solid #cbd5e1;
+            padding: 10px;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 13px;
+            box-sizing: border-box;
+        }
+
+        input[type="date"] {
+            background-color: #fff;
+            font-weight: 500;
+            color: var(--primary);
+        }
+
+        /* GANTT (DERECHA) */
         .gantt-section {
             flex-grow: 1;
             display: flex;
             flex-direction: column;
             padding: 15px;
             overflow: hidden;
-            background: #fff;
+        }
+
+        .gantt-card {
+            background: white;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
         }
 
         .gantt-scroll-container {
             flex-grow: 1;
             overflow: auto;
-            border: 1px solid var(--border);
-            border-radius: 8px;
         }
 
         table.gantt-table {
             border-collapse: separate;
             border-spacing: 0;
-            font-size: 11px;
-            width: max-content;
+            font-size: 12px;
         }
 
         .gantt-table th {
-            background: #f8f9fa;
+            background: #f8fafc;
+            padding: 12px;
+            border-bottom: 2px solid #e2e8f0;
             position: sticky;
             top: 0;
-            z-index: 3;
-            padding: 12px;
-            border-bottom: 2px solid var(--border);
+            z-index: 10;
+            min-width: 160px;
         }
 
         .sticky-col {
             position: sticky;
             left: 0;
             background: white !important;
-            z-index: 4;
-            min-width: 160px;
+            z-index: 20;
+            min-width: 190px;
             padding: 10px 15px;
             font-weight: 600;
-            border-right: 3px solid var(--azul) !important;
-            box-shadow: 4px 0 6px rgba(0,0,0,0.05);
+            border-right: 3px solid #e2e8f0;
+            box-shadow: 4px 0 8px rgba(0,0,0,0.05);
         }
 
-        /* Alerta Crítica */
-        .alert-row {
-            background-color: #fff9f0 !important;
-        }
-        .alert-icon {
-            color: var(--alerta);
-            font-size: 1.1rem;
-            margin-right: 5px;
-            animation: blink 1.5s infinite;
-        }
-
-        @keyframes blink {
-            0% { opacity: 1; }
-            50% { opacity: 0.3; }
-            100% { opacity: 1; }
-        }
-
-        .bar {
-            height: 26px;
-            border-radius: 4px;
+        /* BARRAS */
+        .pill {
+            height: 32px;
+            border-radius: 8px;
             display: flex;
             align-items: center;
-            justify-content: center;
+            padding: 0 12px;
             color: white;
-            font-size: 9px;
-            padding: 0 5px;
-            cursor: help;
+            font-size: 11px;
+            font-weight: 500;
             white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            width: 90%;
             margin: 0 auto;
-            width: 92%;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
 
-        .bar.critical-inyeccion {
-            border: 2px solid var(--alerta);
+        .bg-azul { background: #0056b3; }
+        .bg-morado { background: #6f42c1; }
+        .bg-rojo { background: #dc3545; }
+        .bg-gap { background: #f1f5f9; border: 1px dashed #cbd5e1; color: #94a3b8; }
+
+        .critical-alert {
+            border: 2.5px solid var(--accent) !important;
+            box-shadow: 0 0 10px rgba(245, 158, 11, 0.3);
         }
 
-        .bg-azul { background: var(--azul); }
-        .bg-morado { background: var(--morado); }
-        .bg-rojo { background: var(--rojo); }
-        .bg-gap { background: #eee; color: #999; border: 1px solid #ddd; }
-
-        textarea, input, select {
-            width: 100%;
-            border: 1px solid var(--border);
-            padding: 10px;
-            border-radius: 6px;
-            margin-bottom: 15px;
-            font-family: inherit;
+        .badge-alert {
+            display: inline-block;
+            background: #fff7ed;
+            color: #c2410c;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            margin-top: 4px;
         }
 
-        h3 { margin: 0 0 15px 0; font-size: 1rem; color: var(--header); display: flex; align-items: center; }
+        .loading-text { font-size: 11px; opacity: 0.8; }
     </style>
 </head>
 <body>
 
 <header>
     <div>
-        <button class="toggle-btn" onclick="togglePanel('sideLeft')">☰ Filtros</button>
-        <strong style="margin-left: 15px;">Dashboard Maestro de Guías</strong>
+        <strong>Hoja Maestra <span style="font-weight: 300; opacity: 0.7;">Análisis Operativo</span></strong>
     </div>
-    <div id="statusContainer">
-        <span id="dataStatus" style="font-size: 0.8rem; margin-right: 15px;">Cargando...</span>
-        <button class="toggle-btn" onclick="togglePanel('sideRight')">Resumen ☰</button>
-    </div>
+    <div id="dataStatus" class="loading-text">Sincronizando con Google Sheets...</div>
 </header>
 
 <div class="main-layout">
-    <div class="sidebar" id="sideLeft">
-        <h3>Buscador de Guías</h3>
-        <textarea id="searchGuias" placeholder="Pega guías aquí..." rows="12" oninput="processData()"></textarea>
-        <p style="font-size: 0.75rem; color: #666;">
-            ⚠️ <b>Alerta Automática:</b> Se marcarán con un ícono las guías que superen los 6 días en proceso de inyección.
-        </p>
+    <div class="sidebar">
+        <div class="panel-content">
+            <div class="control-group">
+                <label>📅 Fecha de Consulta (Hoy por defecto)</label>
+                <input type="date" id="searchFecha" onchange="processData()">
+            </div>
+
+            <div class="control-group">
+                <label>🔍 Buscar por Guías</label>
+                <textarea id="searchGuias" placeholder="Pega aquí tus números de guía..." rows="12" oninput="processData()"></textarea>
+            </div>
+
+            <div class="control-group">
+                <label>📊 Límite de Resultados</label>
+                <select id="limitView" onchange="processData()">
+                    <option value="50">Top 50 Guías</option>
+                    <option value="100">Top 100 Guías</option>
+                    <option value="200">Top 200 Guías</option>
+                </select>
+            </div>
+
+            <div id="summaryBox" style="font-size: 12px; color: var(--primary); font-weight: 500;"></div>
+        </div>
     </div>
 
     <div class="gantt-section">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <div id="activeFilters" style="font-size: 0.85rem; color: #444;"></div>
-            <select id="limitView" style="width: auto; margin: 0;" onchange="processData()">
-                <option value="50">Ver 50 guías</option>
-                <option value="100">Ver 100 guías</option>
-                <option value="200">Ver 200 guías</option>
-            </select>
+        <div class="gantt-card">
+            <div id="windowLabel" style="padding: 10px 15px; border-bottom: 1px solid #eee; font-size: 12px; color: #64748b;">
+                Ventana de observación: 15 días activos
+            </div>
+            <div class="gantt-scroll-container">
+                <div id="ganttTarget"></div>
+            </div>
         </div>
-
-        <div class="gantt-scroll-container">
-            <div id="ganttTarget"></div>
-        </div>
-    </div>
-
-    <div class="sidebar" id="sideRight">
-        <h3>Filtro por Fecha</h3>
-        <input type="date" id="searchFecha" onchange="processData()">
-        <div id="fechaList"></div>
     </div>
 </div>
 
@@ -232,24 +252,31 @@
         'Sobre sin Contenido': 'bg-rojo'
     };
 
+    // Al cargar la ventana, establecer fecha de hoy
+    window.onload = () => {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        document.getElementById('searchFecha').value = `${yyyy}-${mm}-${dd}`;
+        init();
+    };
+
     async function init() {
         try {
             const resp = await fetch(SHEET_URL);
             const csv = await resp.text();
             Papa.parse(csv, {
-                header: true,
-                skipEmptyLines: true,
+                header: true, skipEmptyLines: true,
                 complete: (res) => {
                     rawData = res.data.filter(r => r.Fecha && r.Guía && r.Servicio && r.Servicio !== 'Comparativa Rombo');
-                    document.getElementById('dataStatus').innerText = '✅ Datos Sincronizados';
+                    document.getElementById('dataStatus').innerText = 'Base de Datos Sincronizada ✅';
                     processData();
                 }
             });
-        } catch (e) { console.error(e); }
-    }
-
-    function togglePanel(id) {
-        document.getElementById(id).classList.toggle('collapsed');
+        } catch (e) { 
+            document.getElementById('dataStatus').innerText = 'Error al conectar ❌';
+        }
     }
 
     function parseDate(s) {
@@ -269,96 +296,90 @@
         groupedData = {};
         rawData.forEach(row => {
             if (!groupedData[row.Guía]) {
-                groupedData[row.Guía] = { history: {}, inyeccionCount: 0, first: null, last: null, totalTrajectory: 0 };
+                groupedData[row.Guía] = { history: {}, inyDays: 0, first: null, last: null, duration: 0 };
             }
             groupedData[row.Guía].history[row.Fecha] = row.Servicio;
-            if (row.Servicio.includes('Inyección')) groupedData[row.Guía].inyeccionCount++;
+            if (row.Servicio.includes('Inyección')) groupedData[row.Guía].inyDays++;
         });
 
-        let guiasIds = Object.keys(groupedData);
-        
-        guiasIds.forEach(id => {
+        let ids = Object.keys(groupedData);
+        ids.forEach(id => {
             const dates = Object.keys(groupedData[id].history).map(d => parseDate(d));
             groupedData[id].first = new Date(Math.min(...dates));
             groupedData[id].last = new Date(Math.max(...dates));
-            groupedData[id].totalTrajectory = Math.ceil((groupedData[id].last - groupedData[id].first) / (1000 * 60 * 60 * 24)) + 1;
+            groupedData[id].duration = Math.ceil((groupedData[id].last - groupedData[id].first) / 86400000) + 1;
         });
 
+        // Aplicar Filtro de Fecha (si existe)
         if (fechaInput) {
             const [y, m, d] = fechaInput.split('-');
             const target = `${d}/${m}/${y}`;
-            guiasIds = guiasIds.filter(id => groupedData[id].history[target]);
-            document.getElementById('activeFilters').innerText = `📅 Filtrando por día: ${target}`;
-        } else {
-            document.getElementById('activeFilters').innerText = `📊 Todas las guías (Ordenadas por trayectoria)`;
+            ids = ids.filter(id => groupedData[id].history[target]);
         }
+        
+        // Aplicar Filtro de Buscador
+        if (guiasInput.length > 0) ids = ids.filter(id => guiasInput.includes(id));
 
-        if (guiasInput.length > 0) {
-            guiasIds = guiasIds.filter(id => guiasInput.includes(id));
-        }
-
-        // Ordenar por días de trayectoria
-        guiasIds.sort((a, b) => groupedData[b].totalTrajectory - groupedData[a].totalTrajectory);
-
-        renderGantt(guiasIds.slice(0, limit));
+        // Ordenar por duración (trayectoria)
+        ids.sort((a, b) => groupedData[b].duration - groupedData[a].duration);
+        
+        renderGantt(ids.slice(0, limit));
     }
 
     function renderGantt(ids) {
         const target = document.getElementById('ganttTarget');
         if (ids.length === 0) {
-            target.innerHTML = "<p style='padding:20px'>Sin resultados para los filtros aplicados.</p>";
+            target.innerHTML = "<div style='padding:50px; text-align:center; color:#94a3b8;'>No hay registros para la fecha o guías seleccionadas.</div>";
+            document.getElementById('summaryBox').innerText = "Sin resultados.";
             return;
         }
 
-        let globalMin = new Date(Math.min(...ids.map(id => groupedData[id].first)));
-        let globalMax = new Date(Math.max(...ids.map(id => groupedData[id].last)));
-        
+        // Definir ventana de 15 días basada en la fecha máxima encontrada en los datos
+        let maxGlobal = new Date(Math.max(...ids.map(id => groupedData[id].last)));
+        let startWindow = new Date(maxGlobal);
+        startWindow.setDate(startWindow.getDate() - 14);
+
         const timeline = [];
-        for (let d = new Date(globalMin); d <= globalMax; d.setDate(d.getDate() + 1)) {
+        for (let d = new Date(startWindow); d <= maxGlobal; d.setDate(d.getDate() + 1)) {
             timeline.push(new Date(d));
         }
 
-        let html = `<table class="gantt-table"><thead><tr><th class="sticky-col">ID Guía</th>`;
+        document.getElementById('windowLabel').innerText = `Mostrando actividad del ${formatDate(startWindow)} al ${formatDate(maxGlobal)}`;
+
+        let html = `<table class="gantt-table"><thead><tr><th class="sticky-col">Referencia de Guía</th>`;
         timeline.forEach(d => html += `<th>${formatDate(d).substring(0,5)}</th>`);
         html += `</tr></thead><tbody>`;
 
         ids.forEach(id => {
             const info = groupedData[id];
-            const hasAlert = info.inyeccionCount > 6;
-            const rowClass = hasAlert ? 'alert-row' : '';
+            const isAlert = info.inyDays > 6;
 
-            html += `<tr class="${rowClass}"><td class="sticky-col">
-                ${hasAlert ? '<span class="alert-icon" title="Alerta: Más de 6 días en Inyección">⚠️</span>' : ''}
-                ${id}
-                <div style="font-size:9px; font-weight:normal; color:#777">Trayectoria: ${info.totalTrajectory}d</div>
+            html += `<tr><td class="sticky-col">
+                <div style="font-size:13px; color:var(--header)">${isAlert ? '⚠️ ' : ''}${id}</div>
+                ${isAlert ? `<div class="badge-alert">Inyección Crítica (${info.inyDays}d)</div>` : `<div style="font-size:10px; color:#94a3b8;">Trayectoria total: ${info.duration}d</div>`}
             </td>`;
             
-            let currentStatus = null;
             timeline.forEach(tDate => {
-                const dateStr = formatDate(tDate);
-                const status = info.history[dateStr];
+                const dateKey = formatDate(tDate);
+                const service = info.history[dateKey];
                 const tTime = tDate.getTime();
 
-                if (status) {
-                    currentStatus = status;
-                    let tooltip = status;
-                    let barClass = colorMap[status] || 'bg-gap';
+                if (service) {
+                    let css = colorMap[service] || 'bg-gap';
+                    if (isAlert && service.includes('Inyección')) css += ' critical-alert';
                     
-                    if (status.includes('Inyección')) {
-                        let countTillNow = 0;
-                        Object.keys(info.history).forEach(d => {
-                            if (parseDate(d) <= tDate && info.history[d].includes('Inyección')) countTillNow++;
-                        });
-                        tooltip = `Día ${countTillNow} de Inyección. ${hasAlert ? '(¡CRÍTICO!)' : ''}`;
-                        if (hasAlert) barClass += ' critical-inyeccion';
-                    }
+                    // Conteo acumulado para el tooltip
+                    let countAtDate = 0;
+                    Object.keys(info.history).forEach(k => {
+                        if (parseDate(k) <= tDate && info.history[k].includes('Inyección')) countAtDate++;
+                    });
+                    
+                    const tooltip = service.includes('Inyección') ? `Estatus: ${service}\nDía ${countAtDate} acumulado en inyección.` : `Estatus: ${service}`;
 
-                    html += `<td><div class="bar ${barClass}" title="${tooltip}">${status.substring(0,8)}..</div></td>`;
-                } 
-                else if (tTime > info.first.getTime() && tTime < info.last.getTime()) {
-                    html += `<td><div class="bar bg-gap" style="opacity:0.2"></div></td>`;
-                } 
-                else {
+                    html += `<td><div class="pill ${css}" title="${tooltip}">${service}</div></td>`;
+                } else if (tTime > info.first.getTime() && tTime < info.last.getTime()) {
+                    html += `<td><div class="pill bg-gap" style="opacity:0.3"></div></td>`;
+                } else {
                     html += `<td></td>`;
                 }
             });
@@ -367,9 +388,8 @@
 
         html += `</tbody></table>`;
         target.innerHTML = html;
+        document.getElementById('summaryBox').innerText = `${ids.length} guías encontradas.`;
     }
-
-    init();
 </script>
 </body>
 </html>
