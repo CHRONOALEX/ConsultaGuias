@@ -3,68 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cronología Redpack - Gantt</title>
+    <title>Cronología Redpack - Gantt Pro</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background-color: #f4f7f6; padding: 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .header-ui { background: #1a1a1a; color: white; padding: 25px; border-radius: 15px; margin-bottom: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .card-control { border: none; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); background: white; padding: 20px; margin-bottom: 20px; }
-        .gantt-container { overflow-x: auto; background: white; padding: 20px; border-radius: 12px; border: 1px solid #e0e0e0; }
-        #ganttChart { min-width: 800px; height: 400px; }
-        .status-badge { font-size: 0.75rem; padding: 3px 8px; border-radius: 12px; }
-        #loading { display: none; }
+        body { background-color: #f4f7f6; padding: 20px; font-family: 'Segoe UI', sans-serif; }
+        .header-ui { background: #000; color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; }
+        .card-control { background: white; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); padding: 20px; margin-bottom: 20px; border: none; }
+        .gantt-wrapper { background: white; padding: 15px; border-radius: 12px; border: 1px solid #ddd; margin-bottom: 20px; position: relative; height: 450px; }
+        #loading { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; background: rgba(255,255,255,0.9); padding: 20px; border-radius: 10px; box-shadow: 0 0 15px rgba(0,0,0,0.2); }
     </style>
 </head>
 <body>
 
-<div class="container-fluid" style="max-width: 1400px;">
+<div id="loading" class="text-center">
+    <div class="spinner-border text-primary" role="status"></div>
+    <div class="mt-2 fw-bold">Procesando base de datos...</div>
+</div>
+
+<div class="container-fluid" style="max-width: 1300px;">
     <div class="header-ui text-center">
-        <h2 class="mb-0">Gestión de Cronología Redpack</h2>
-        <p class="text-muted mb-0" style="color: #aaa !important;">Visualización de estados por línea de tiempo</p>
+        <h2 class="mb-0">Panel de Control Redpack</h2>
     </div>
 
-    <div class="row">
+    <div class="row g-3">
         <div class="col-md-7">
             <div class="card-control h-100">
-                <label class="form-label fw-bold">1. Consultar Guías Específicas</label>
-                <textarea id="inputGuias" class="form-control mb-3" rows="2" placeholder="Pegue guías separadas por punto y coma (;)"></textarea>
-                <button onclick="realizarConsulta('guias')" class="btn btn-primary w-100 fw-bold">Cargar Historial de Guías</button>
+                <label class="form-label fw-bold">Consultar por Guías</label>
+                <textarea id="inputGuias" class="form-control mb-2" rows="2" placeholder="Guía1; Guía2;"></textarea>
+                <button onclick="ejecutarConsulta('guias')" class="btn btn-primary w-100">Cargar Historial de Guías</button>
             </div>
         </div>
-
         <div class="col-md-5">
-            <div class="card-control h-100">
-                <label class="form-label fw-bold">2. Consultar por Fecha (Global)</label>
-                <input type="date" id="filtroCalendario" class="form-control mb-3">
-                <button onclick="realizarConsulta('fecha')" class="btn btn-dark w-100 fw-bold">Filtrar Día Específico</button>
+            <div class="card-control h-100 text-end">
+                <label class="form-label fw-bold w-100 text-start">Navegador de Fechas (Global)</label>
+                <input type="date" id="filtroCalendario" class="form-control mb-2">
+                <button onclick="ejecutarConsulta('fecha')" class="btn btn-dark w-100">Filtrar por Fecha</button>
             </div>
         </div>
-    </div>
-
-    <div id="loading" class="text-center my-4">
-        <div class="spinner-border text-primary" role="status"></div>
-        <p class="mt-2">Sincronizando con base de datos...</p>
     </div>
 
     <div id="resultadoSeccion" class="d-none mt-4">
         <div class="card-control">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h4 class="mb-0">Diagrama de Gantt de Estados</h4>
-                <button onclick="exportarExcel()" class="btn btn-success btn-sm">📥 Descargar Reporte</button>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Visualización de Línea de Tiempo (Gantt)</h5>
+                <button onclick="exportarExcel()" class="btn btn-success btn-sm">📥 Exportar Excel</button>
             </div>
-            
-            <div class="gantt-container">
+            <div class="gantt-wrapper">
                 <canvas id="ganttChart"></canvas>
             </div>
         </div>
 
-        <div class="table-container shadow-sm mt-4">
-            <table class="table table-hover align-middle bg-white" id="tablaGuias">
+        <div class="table-responsive bg-white rounded shadow-sm">
+            <table class="table table-hover align-middle mb-0" id="tablaGuias">
                 <thead class="table-dark">
                     <tr>
-                        <th>Número de Guía</th>
+                        <th>Guía</th>
                         <th>Estado Actual</th>
-                        <th>Última Actualización</th>
+                        <th>Fecha Registro</th>
                     </tr>
                 </thead>
                 <tbody id="cuerpoTabla"></tbody>
@@ -78,118 +73,130 @@
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
 
 <script>
+    let chartInstance = null;
     const URL_SHEET = 'https://docs.google.com/spreadsheets/d/1w3M--HlDfEsHHmtDZtkPcTFy-K8TX4OsH6mm71Ry12U/gviz/tq?tqx=out:csv&sheet=Hoja1';
-    let chartInstancia = null;
 
-    async function realizarConsulta(tipo) {
-        document.getElementById('loading').style.display = 'block';
-        document.getElementById('resultadoSeccion').classList.add('d-none');
+    // Normaliza fechas de DD/MM/YYYY o YYYY-MM-DD a un objeto Date real
+    function parseDate(dateStr) {
+        if (!dateStr) return null;
+        if (dateStr.includes('/')) {
+            const [d, m, y] = dateStr.split('/');
+            return new Date(y, m - 1, d);
+        }
+        return new Date(dateStr + "T00:00:00");
+    }
+
+    async function ejecutarConsulta(modo) {
+        const loading = document.getElementById('loading');
+        loading.style.display = 'block';
 
         try {
             const response = await fetch(URL_SHEET);
-            const textoCSV = await response.text();
-            const filasRaw = parsearCSV(textoCSV);
-
+            const csvText = await response.text();
+            const rawData = parsearCSV(csvText);
+            
             let filtrados = [];
             
-            if (tipo === 'guias') {
-                const guiasInput = document.getElementById('inputGuias').value.split(/[;\n]/).map(g => g.trim()).filter(g => g !== "");
-                if (guiasInput.length === 0) throw new Error("Ingresa al menos una guía.");
-                filtrados = filasRaw.filter(f => guiasInput.includes(f[1]) && f[2] !== "Comparativa Rombo");
+            if (modo === 'guias') {
+                const input = document.getElementById('inputGuias').value.trim();
+                if (!input) throw new Error("Ingresa guías para buscar.");
+                const listaGuias = input.split(/[;\n]/).map(g => g.trim());
+                filtrados = rawData.filter(f => listaGuias.includes(f[1]));
             } else {
-                const fechaBusqueda = document.getElementById('filtroCalendario').value;
-                if (!fechaBusqueda) throw new Error("Selecciona una fecha.");
-                // Primero obtenemos qué guías tuvieron movimiento ese día
-                const guiasDelDia = [...new Set(filasRaw.filter(f => f[0] === fechaBusqueda).map(f => f[1]))];
-                // Traemos TODO el historial de esas guías para el Gantt
-                filtrados = filasRaw.filter(f => guiasDelDia.includes(f[1]) && f[2] !== "Comparativa Rombo");
+                const fechaBuscada = document.getElementById('filtroCalendario').value;
+                if (!fechaBuscada) throw new Error("Selecciona una fecha.");
+                
+                // Buscamos qué guías tienen registros en esa fecha (normalizando formatos)
+                const guiasDelDia = rawData.filter(f => {
+                    const fDoc = parseDate(f[0]);
+                    const fBus = parseDate(fechaBuscada);
+                    return fDoc && fBus && fDoc.getTime() === fBus.getTime();
+                }).map(f => f[1]);
+
+                // Obtenemos el historial completo de las guías encontradas
+                filtrados = rawData.filter(f => guiasDelDia.includes(f[1]));
             }
 
             if (filtrados.length === 0) {
-                alert("No se encontraron registros.");
+                alert("No se encontraron datos.");
                 return;
             }
 
-            procesarYVisualizar(filtrados);
+            procesarDatosGantt(filtrados);
         } catch (e) {
             alert(e.message);
         } finally {
-            document.getElementById('loading').style.display = 'none';
+            loading.style.display = 'none';
         }
     }
 
-    function procesarYVisualizar(datos) {
+    function procesarDatosGantt(datos) {
         const mapa = {};
-        let fechaMin = new Date(datos[0][0]);
-        let fechaMax = new Date(datos[0][0]);
+        let minTime = Infinity;
+        let maxTime = -Infinity;
 
-        datos.forEach(f => {
-            const [fecha, guia, servicio] = f;
-            const fDate = new Date(fecha);
-            if (fDate < fechaMin) fechaMin = fDate;
-            if (fDate > fechaMax) fechaMax = fDate;
+        // Limpiar "Comparativa Rombo" y agrupar
+        datos.filter(f => f[2] !== "Comparativa Rombo").forEach(f => {
+            const [fechaStr, guia, estado] = f;
+            const fechaObj = parseDate(fechaStr);
+            if (!fechaObj) return;
+
+            const time = fechaObj.getTime();
+            if (time < minTime) minTime = time;
+            if (time > maxTime) maxTime = time;
 
             if (!mapa[guia]) mapa[guia] = {};
-            mapa[guia][fecha] = servicio;
+            mapa[guia][fechaStr] = estado;
         });
 
-        const guiasIds = Object.keys(mapa);
+        const guias = Object.keys(mapa);
         const datasets = [];
-
-        // Preparar datos para el Gantt y la tabla
         const cuerpo = document.getElementById('cuerpoTabla');
         cuerpo.innerHTML = "";
 
-        guiasIds.forEach((guia, index) => {
+        guias.forEach((guia, i) => {
             const historial = mapa[guia];
-            const fechasOrdenadas = Object.keys(historial).sort((a,b) => new Date(a) - new Date(b));
+            const fechas = Object.keys(historial).sort((a,b) => parseDate(a) - parseDate(b));
             
-            // Lógica de Gantt: Crear segmentos por día
-            const dataPuntos = [];
-            let tempDate = new Date(fechaMin);
-            while (tempDate <= fechaMax) {
-                const fStr = tempDate.toISOString().split('T')[0];
-                const estado = historial[fStr] || ""; // Hueco si no hay estado
+            // Llenar tabla con el último estado
+            const ultimaF = fechas[fechas.length - 1];
+            cuerpo.innerHTML += `<tr><td><b>${guia}</b></td><td><span class="badge bg-primary">${historial[ultimaF]}</span></td><td>${ultimaF}</td></tr>`;
+
+            // Crear puntos para el Gantt cubriendo el rango
+            let current = new Date(minTime);
+            const end = new Date(maxTime);
+
+            while (current <= end) {
+                const dStr = current.toISOString().split('T')[0];
+                // Buscamos si existe el registro o el último conocido para "rellenar"
+                // En este caso, según pides, si es hueco no lleva etiqueta
+                const displayStr = Object.keys(historial).find(k => parseDate(k).getTime() === current.getTime());
                 
-                if (estado) {
-                    dataPuntos.push({
-                        x: [fStr, fStr], // Barra de un solo día
-                        y: guia,
-                        estado: estado
+                if (displayStr) {
+                    datasets.push({
+                        label: guia,
+                        data: [{
+                            x: [current.getTime(), current.getTime() + 86400000],
+                            y: guia,
+                            status: historial[displayStr]
+                        }],
+                        backgroundColor: '#1a73e8',
+                        barPercentage: 0.5
                     });
                 }
-                tempDate.setDate(tempDate.getDate() + 1);
+                current.setDate(current.getDate() + 1);
             }
-
-            datasets.push({
-                label: guia,
-                data: dataPuntos,
-                backgroundColor: 'rgba(26, 115, 232, 0.8)',
-                borderColor: '#1a73e8',
-                borderWidth: 1,
-                barPercentage: 0.6
-            });
-
-            // Llenar Tabla
-            const ultimaFecha = fechasOrdenadas[fechasOrdenadas.length - 1];
-            cuerpo.innerHTML += `
-                <tr>
-                    <td><span class="badge bg-light text-dark border">${guia}</span></td>
-                    <td><span class="status-badge bg-primary text-white">${historial[ultimaFecha]}</span></td>
-                    <td class="small text-muted">${ultimaFecha}</td>
-                </tr>
-            `;
         });
 
-        renderizarGantt(datasets, guiasIds);
         document.getElementById('resultadoSeccion').classList.remove('d-none');
+        renderChart(datasets, minTime, maxTime);
     }
 
-    function renderizarGantt(datasets, guias) {
-        if (chartInstancia) chartInstancia.destroy();
-
+    function renderChart(datasets, min, max) {
         const ctx = document.getElementById('ganttChart').getContext('2d');
-        chartInstancia = new Chart(ctx, {
+        if (chartInstance) chartInstance.destroy();
+
+        chartInstance = new Chart(ctx, {
             type: 'bar',
             data: { datasets: datasets },
             options: {
@@ -200,19 +207,17 @@
                     legend: { display: false },
                     tooltip: {
                         callbacks: {
-                            label: (ctx) => `Estado: ${ctx.raw.estado}`
+                            label: (c) => `Estado: ${c.raw.status}`
                         }
                     }
                 },
                 scales: {
                     x: {
                         type: 'time',
-                        time: { unit: 'day', displayFormats: { day: 'dd MMM' } },
-                        title: { display: true, text: 'Línea de Tiempo' }
-                    },
-                    y: {
-                        stacked: true,
-                        title: { display: true, text: 'Números de Guía' }
+                        time: { unit: 'day' },
+                        min: min,
+                        max: max + 86400000,
+                        grid: { color: '#f0f0f0' }
                     }
                 }
             }
@@ -227,10 +232,8 @@
     }
 
     function exportarExcel() {
-        const wb = XLSX.utils.table_to_book(document.getElementById("tablaGuias"));
-        XLSX.writeFile(wb, "Reporte_Cronologia_Redpack.xlsx");
+        XLSX.writeFile(XLSX.utils.table_to_book(document.getElementById("tablaGuias")), "Reporte_Redpack.xlsx");
     }
 </script>
-
 </body>
 </html>
