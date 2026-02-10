@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Analista Experto - Hoja Maestra Gantt</title>
+    <title>Analista Pro - Monitor con Alertas</title>
     <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;600&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
@@ -11,185 +11,216 @@
             --azul: #0056b3;
             --morado: #6f42c1;
             --rojo: #dc3545;
-            --bg: #f8f9fa;
+            --alerta: #ff9800;
+            --bg: #f0f2f5;
             --panel: #ffffff;
-            --border: #dee2e6;
+            --border: #e0e0e0;
+            --header: #1a1c1e;
         }
 
         body {
             font-family: 'Lexend', sans-serif;
             margin: 0;
             background-color: var(--bg);
-            color: #333;
+            height: 100vh;
             display: flex;
             flex-direction: column;
-            height: 100vh;
             overflow: hidden;
         }
 
         header {
-            background: #202124;
+            background: var(--header);
             color: white;
-            padding: 10px 20px;
+            padding: 12px 25px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 10;
         }
 
-        .main-container {
-            display: grid;
-            grid-template-columns: 250px 1fr 250px;
-            gap: 10px;
-            padding: 10px;
+        .main-layout {
+            display: flex;
             flex-grow: 1;
             overflow: hidden;
         }
 
-        .panel {
+        .sidebar {
+            width: 300px;
             background: var(--panel);
-            border: 1px solid var(--border);
-            border-radius: 8px;
+            border-right: 1px solid var(--border);
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+
+        .sidebar.collapsed {
+            width: 0;
+            padding: 0;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .toggle-btn {
+            background: var(--header);
+            color: white;
+            border: 1px solid #444;
+            padding: 8px 12px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+
+        .gantt-section {
+            flex-grow: 1;
             display: flex;
             flex-direction: column;
             padding: 15px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            overflow: hidden;
+            background: #fff;
         }
 
-        h3 { margin-top: 0; font-size: 1rem; border-bottom: 2px solid var(--azul); padding-bottom: 5px; }
-
-        textarea, input, select {
-            width: 100%;
-            padding: 8px;
-            margin-bottom: 10px;
-            border: 1px solid var(--border);
-            border-radius: 4px;
-            box-sizing: border-box;
-        }
-
-        /* Gantt Chart Styles */
-        .gantt-wrapper {
+        .gantt-scroll-container {
+            flex-grow: 1;
             overflow: auto;
-            position: relative;
-            background: white;
-        }
-
-        .gantt-controls {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 10px;
-            align-items: center;
+            border: 1px solid var(--border);
+            border-radius: 8px;
         }
 
         table.gantt-table {
-            border-collapse: collapse;
+            border-collapse: separate;
+            border-spacing: 0;
             font-size: 11px;
             width: max-content;
         }
 
-        .gantt-table th, .gantt-table td {
-            border: 1px solid #eee;
-            min-width: 40px;
-            height: 30px;
-            text-align: center;
-            padding: 2px;
+        .gantt-table th {
+            background: #f8f9fa;
+            position: sticky;
+            top: 0;
+            z-index: 3;
+            padding: 12px;
+            border-bottom: 2px solid var(--border);
         }
 
         .sticky-col {
             position: sticky;
             left: 0;
-            background: white;
-            z-index: 2;
-            min-width: 120px !important;
-            font-weight: bold;
-            box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+            background: white !important;
+            z-index: 4;
+            min-width: 160px;
+            padding: 10px 15px;
+            font-weight: 600;
+            border-right: 3px solid var(--azul) !important;
+            box-shadow: 4px 0 6px rgba(0,0,0,0.05);
         }
 
-        .cell-bar {
-            height: 80%;
-            width: 100%;
-            border-radius: 3px;
+        /* Alerta Crítica */
+        .alert-row {
+            background-color: #fff9f0 !important;
+        }
+        .alert-icon {
+            color: var(--alerta);
+            font-size: 1.1rem;
+            margin-right: 5px;
+            animation: blink 1.5s infinite;
+        }
+
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0.3; }
+            100% { opacity: 1; }
+        }
+
+        .bar {
+            height: 26px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
             font-size: 9px;
-            overflow: hidden;
+            padding: 0 5px;
+            cursor: help;
             white-space: nowrap;
+            margin: 0 auto;
+            width: 92%;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
 
-        /* Colors based on Image 2 */
-        .bg-azul { background-color: var(--azul); }
-        .bg-morado { background-color: var(--morado); }
-        .bg-rojo { background-color: var(--rojo); }
-        .bg-fill { background-color: #e9ecef; } /* For gaps */
-
-        .status-list {
-            list-style: none;
-            padding: 0;
-            overflow-y: auto;
-            font-size: 0.85rem;
-        }
-        .status-list li {
-            padding: 5px;
-            border-bottom: 1px solid #eee;
+        .bar.critical-inyeccion {
+            border: 2px solid var(--alerta);
         }
 
-        .loading-overlay {
-            position: fixed;
-            top:0; left:0; width:100%; height:100%;
-            background: rgba(255,255,255,0.8);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
+        .bg-azul { background: var(--azul); }
+        .bg-morado { background: var(--morado); }
+        .bg-rojo { background: var(--rojo); }
+        .bg-gap { background: #eee; color: #999; border: 1px solid #ddd; }
+
+        textarea, input, select {
+            width: 100%;
+            border: 1px solid var(--border);
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-family: inherit;
         }
+
+        h3 { margin: 0 0 15px 0; font-size: 1rem; color: var(--header); display: flex; align-items: center; }
     </style>
 </head>
 <body>
 
-<div id="loading" class="loading-overlay">Cargando datos de Google Sheets...</div>
-
 <header>
-    <div><strong>Hoja Maestra</strong> - Sistema de Monitoreo</div>
-    <div id="last-update" style="font-size: 0.8rem;"></div>
+    <div>
+        <button class="toggle-btn" onclick="togglePanel('sideLeft')">☰ Filtros</button>
+        <strong style="margin-left: 15px;">Dashboard Maestro de Guías</strong>
+    </div>
+    <div id="statusContainer">
+        <span id="dataStatus" style="font-size: 0.8rem; margin-right: 15px;">Cargando...</span>
+        <button class="toggle-btn" onclick="togglePanel('sideRight')">Resumen ☰</button>
+    </div>
 </header>
 
-<div class="main-container">
-    <div class="panel">
-        <h3>Buscador por Guías</h3>
-        <p style="font-size: 0.7rem; color: #666;">Pega columnas de Excel, usa espacios o ";"</p>
-        <textarea id="searchGuias" placeholder="Ej: 87371067; 87373136" rows="10"></textarea>
-        <button onclick="processData()" style="background: var(--azul); color:white; border:none; padding:10px; border-radius:4px; cursor:pointer;">Filtrar Guías</button>
-        <div id="guiasCount" style="margin-top:10px; font-size: 0.8rem;"></div>
+<div class="main-layout">
+    <div class="sidebar" id="sideLeft">
+        <h3>Buscador de Guías</h3>
+        <textarea id="searchGuias" placeholder="Pega guías aquí..." rows="12" oninput="processData()"></textarea>
+        <p style="font-size: 0.75rem; color: #666;">
+            ⚠️ <b>Alerta Automática:</b> Se marcarán con un ícono las guías que superen los 6 días en proceso de inyección.
+        </p>
     </div>
 
-    <div class="panel">
-        <div class="gantt-controls">
-            <h3>Visualización Gantt</h3>
-            <select id="limitView" style="width: auto;" onchange="processData()">
-                <option value="50">Mostrar 50 guías</option>
-                <option value="100">Mostrar 100 guías</option>
-                <option value="200">Mostrar 200 guías</option>
-                <option value="300">Mostrar 300 guías</option>
+    <div class="gantt-section">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div id="activeFilters" style="font-size: 0.85rem; color: #444;"></div>
+            <select id="limitView" style="width: auto; margin: 0;" onchange="processData()">
+                <option value="50">Ver 50 guías</option>
+                <option value="100">Ver 100 guías</option>
+                <option value="200">Ver 200 guías</option>
             </select>
         </div>
-        <div class="gantt-wrapper" id="ganttContainer">
-            </div>
+
+        <div class="gantt-scroll-container">
+            <div id="ganttTarget"></div>
+        </div>
     </div>
 
-    <div class="panel">
-        <h3>Filtrar por Fecha</h3>
+    <div class="sidebar" id="sideRight">
+        <h3>Filtro por Fecha</h3>
         <input type="date" id="searchFecha" onchange="processData()">
-        <div id="fechaResults" class="status-list">
-            </div>
+        <div id="fechaList"></div>
     </div>
 </div>
 
 <script>
     const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1VTGVDxDRf8v60ZxRaYqUwWqEzaqtZRvUvfzmPqDXul4/export?format=csv';
     let rawData = [];
+    let groupedData = {};
 
-    // Mapeo de colores según imagen 2
     const colorMap = {
         'Inyección NextDay': 'bg-azul',
         'Inyección SameDay': 'bg-morado',
@@ -203,123 +234,131 @@
 
     async function init() {
         try {
-            const response = await fetch(SHEET_URL);
-            const csvText = await response.text();
-            
-            Papa.parse(csvText, {
+            const resp = await fetch(SHEET_URL);
+            const csv = await resp.text();
+            Papa.parse(csv, {
                 header: true,
                 skipEmptyLines: true,
-                complete: function(results) {
-                    rawData = results.data.filter(row => {
-                        // REGLA: Si falta algún dato en las 3 columnas principales, no mostrar
-                        const hasData = row['Fecha'] && row['Guía'] && row['Servicio'];
-                        // REGLA: Si es Comparativa Rombo, omitir
-                        const isNotRombo = row['Servicio'] !== 'Comparativa Rombo';
-                        return hasData && isNotRombo;
-                    });
-                    
-                    document.getElementById('loading').style.display = 'none';
-                    document.getElementById('last-update').innerText = 'Datos cargados: ' + new Date().toLocaleTimeString();
+                complete: (res) => {
+                    rawData = res.data.filter(r => r.Fecha && r.Guía && r.Servicio && r.Servicio !== 'Comparativa Rombo');
+                    document.getElementById('dataStatus').innerText = '✅ Datos Sincronizados';
                     processData();
                 }
             });
-        } catch (error) {
-            console.error("Error cargando el sheet:", error);
-            alert("No se pudo cargar la información del Google Sheet.");
-        }
+        } catch (e) { console.error(e); }
     }
 
-    function parseDate(dateStr) {
-        if(!dateStr) return null;
-        const [d, m, y] = dateStr.split('/');
+    function togglePanel(id) {
+        document.getElementById(id).classList.toggle('collapsed');
+    }
+
+    function parseDate(s) {
+        const [d, m, y] = s.split('/');
         return new Date(y, m - 1, d);
     }
 
-    function formatDate(date) {
-        return date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    function formatDate(d) {
+        return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
     }
 
     function processData() {
-        const guiasFilter = document.getElementById('searchGuias').value.split(/[\s,;]+/).filter(x => x.length > 0);
-        const fechaFilter = document.getElementById('searchFecha').value;
+        const guiasInput = document.getElementById('searchGuias').value.split(/[\s,;\n]+/).filter(x => x.length > 0);
+        const fechaInput = document.getElementById('searchFecha').value;
         const limit = parseInt(document.getElementById('limitView').value);
 
-        let filtered = [...rawData];
-
-        // Filtro por lista de guías
-        if (guiasFilter.length > 0) {
-            filtered = filtered.filter(row => guiasFilter.includes(row['Guía']));
-        }
-
-        // Agrupar por Guía para obtener estados por día
-        const grouped = {};
-        filtered.forEach(row => {
-            const g = row['Guía'];
-            if (!grouped[g]) grouped[g] = {};
-            
-            // REGLA: Si hay 2 guías el mismo día, muestra el último servicio del día
-            // (Asumimos el orden del sheet como cronológico descendente o ascendente)
-            grouped[g][row['Fecha']] = row['Servicio'];
+        groupedData = {};
+        rawData.forEach(row => {
+            if (!groupedData[row.Guía]) {
+                groupedData[row.Guía] = { history: {}, inyeccionCount: 0, first: null, last: null, totalTrajectory: 0 };
+            }
+            groupedData[row.Guía].history[row.Fecha] = row.Servicio;
+            if (row.Servicio.includes('Inyección')) groupedData[row.Guía].inyeccionCount++;
         });
 
-        const guiasIds = Object.keys(grouped).slice(0, limit);
-        renderGantt(guiasIds, grouped);
-        renderFechaPanel(fechaFilter);
+        let guiasIds = Object.keys(groupedData);
+        
+        guiasIds.forEach(id => {
+            const dates = Object.keys(groupedData[id].history).map(d => parseDate(d));
+            groupedData[id].first = new Date(Math.min(...dates));
+            groupedData[id].last = new Date(Math.max(...dates));
+            groupedData[id].totalTrajectory = Math.ceil((groupedData[id].last - groupedData[id].first) / (1000 * 60 * 60 * 24)) + 1;
+        });
+
+        if (fechaInput) {
+            const [y, m, d] = fechaInput.split('-');
+            const target = `${d}/${m}/${y}`;
+            guiasIds = guiasIds.filter(id => groupedData[id].history[target]);
+            document.getElementById('activeFilters').innerText = `📅 Filtrando por día: ${target}`;
+        } else {
+            document.getElementById('activeFilters').innerText = `📊 Todas las guías (Ordenadas por trayectoria)`;
+        }
+
+        if (guiasInput.length > 0) {
+            guiasIds = guiasIds.filter(id => guiasInput.includes(id));
+        }
+
+        // Ordenar por días de trayectoria
+        guiasIds.sort((a, b) => groupedData[b].totalTrajectory - groupedData[a].totalTrajectory);
+
+        renderGantt(guiasIds.slice(0, limit));
     }
 
-    function renderGantt(guiasIds, groupedData) {
-        const container = document.getElementById('ganttContainer');
-        if (guiasIds.length === 0) {
-            container.innerHTML = "<p>No hay datos para mostrar con los filtros seleccionados.</p>";
+    function renderGantt(ids) {
+        const target = document.getElementById('ganttTarget');
+        if (ids.length === 0) {
+            target.innerHTML = "<p style='padding:20px'>Sin resultados para los filtros aplicados.</p>";
             return;
         }
 
-        // Obtener rango de fechas global para el Gantt
-        let allDates = [];
-        guiasIds.forEach(id => {
-            Object.keys(groupedData[id]).forEach(d => allDates.push(parseDate(d)));
-        });
-        allDates.sort((a, b) => a - b);
+        let globalMin = new Date(Math.min(...ids.map(id => groupedData[id].first)));
+        let globalMax = new Date(Math.max(...ids.map(id => groupedData[id].last)));
         
-        const minDate = new Date(allDates[0]);
-        const maxDate = new Date(allDates[allDates.length - 1]);
-        
-        // Generar array de todas las fechas en el rango
         const timeline = [];
-        let curr = new Date(minDate);
-        while (curr <= maxDate) {
-            timeline.push(new Date(curr));
-            curr.setDate(curr.getDate() + 1);
+        for (let d = new Date(globalMin); d <= globalMax; d.setDate(d.getDate() + 1)) {
+            timeline.push(new Date(d));
         }
 
-        let html = `<table class="gantt-table"><thead><tr><th class="sticky-col">Guía</th>`;
-        timeline.forEach(d => {
-            html += `<th>${formatDate(d).substring(0,5)}</th>`;
-        });
+        let html = `<table class="gantt-table"><thead><tr><th class="sticky-col">ID Guía</th>`;
+        timeline.forEach(d => html += `<th>${formatDate(d).substring(0,5)}</th>`);
         html += `</tr></thead><tbody>`;
 
-        guiasIds.forEach(id => {
-            html += `<tr><td class="sticky-col">${id}</td>`;
-            
-            let lastKnownService = null;
-            let guideDates = Object.keys(groupedData[id]).map(d => parseDate(d).getTime());
-            let firstDate = Math.min(...guideDates);
-            let lastDate = Math.max(...guideDates);
+        ids.forEach(id => {
+            const info = groupedData[id];
+            const hasAlert = info.inyeccionCount > 6;
+            const rowClass = hasAlert ? 'alert-row' : '';
 
+            html += `<tr class="${rowClass}"><td class="sticky-col">
+                ${hasAlert ? '<span class="alert-icon" title="Alerta: Más de 6 días en Inyección">⚠️</span>' : ''}
+                ${id}
+                <div style="font-size:9px; font-weight:normal; color:#777">Trayectoria: ${info.totalTrajectory}d</div>
+            </td>`;
+            
+            let currentStatus = null;
             timeline.forEach(tDate => {
-                const dateKey = formatDate(tDate);
-                const service = groupedData[id][dateKey];
+                const dateStr = formatDate(tDate);
+                const status = info.history[dateStr];
                 const tTime = tDate.getTime();
 
-                if (service) {
-                    const colorClass = colorMap[service] || 'bg-fill';
-                    html += `<td><div class="cell-bar ${colorClass}" title="${service}">${service.substring(0,8)}</div></td>`;
-                    lastKnownService = service;
-                } else if (tTime > firstDate && tTime < lastDate) {
-                    // REGLA: Rellenar huecos sin etiqueta
-                    const colorClass = colorMap[lastKnownService] || 'bg-fill';
-                    html += `<td><div class="cell-bar ${colorClass}" style="opacity: 0.4;"></div></td>`;
-                } else {
+                if (status) {
+                    currentStatus = status;
+                    let tooltip = status;
+                    let barClass = colorMap[status] || 'bg-gap';
+                    
+                    if (status.includes('Inyección')) {
+                        let countTillNow = 0;
+                        Object.keys(info.history).forEach(d => {
+                            if (parseDate(d) <= tDate && info.history[d].includes('Inyección')) countTillNow++;
+                        });
+                        tooltip = `Día ${countTillNow} de Inyección. ${hasAlert ? '(¡CRÍTICO!)' : ''}`;
+                        if (hasAlert) barClass += ' critical-inyeccion';
+                    }
+
+                    html += `<td><div class="bar ${barClass}" title="${tooltip}">${status.substring(0,8)}..</div></td>`;
+                } 
+                else if (tTime > info.first.getTime() && tTime < info.last.getTime()) {
+                    html += `<td><div class="bar bg-gap" style="opacity:0.2"></div></td>`;
+                } 
+                else {
                     html += `<td></td>`;
                 }
             });
@@ -327,38 +366,10 @@
         });
 
         html += `</tbody></table>`;
-        container.innerHTML = html;
+        target.innerHTML = html;
     }
 
-    function renderFechaPanel(filterDate) {
-        const resultsDiv = document.getElementById('fechaResults');
-        if (!filterDate) {
-            resultsDiv.innerHTML = "<p style='color:#999'>Selecciona una fecha para ver el resumen diario.</p>";
-            return;
-        }
-
-        // Convertir YYYY-MM-DD a DD/MM/YYYY
-        const [y, m, d] = filterDate.split('-');
-        const formattedSearch = `${d}/${m}/${y}`;
-
-        const dayData = rawData.filter(row => row['Fecha'] === formattedSearch);
-        
-        if (dayData.length === 0) {
-            resultsDiv.innerHTML = "<li>No hay movimientos en esta fecha.</li>";
-            return;
-        }
-
-        let html = "<ul>";
-        dayData.forEach(row => {
-            html += `<li><strong>${row['Guía']}</strong>: ${row['Servicio']}</li>`;
-        });
-        html += "</ul>";
-        resultsDiv.innerHTML = html;
-    }
-
-    // Iniciar carga
     init();
 </script>
-
 </body>
 </html>
