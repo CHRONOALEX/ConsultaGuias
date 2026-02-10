@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cronología Redpack - Gantt Estable</title>
+    <title>Cronología Redpack - Gantt de Colores</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { background-color: #f4f7f6; padding: 20px; font-family: 'Segoe UI', sans-serif; }
         .header-ui { background: #000; color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; }
         .card-control { background: white; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); padding: 20px; margin-bottom: 20px; border: none; }
-        .gantt-wrapper { background: white; padding: 15px; border-radius: 12px; border: 1px solid #ddd; margin-bottom: 20px; height: 550px; position: relative; }
+        .gantt-wrapper { background: white; padding: 15px; border-radius: 12px; border: 1px solid #ddd; margin-bottom: 20px; height: 600px; position: relative; }
         #loading { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.2); border: 1px solid #000; }
     </style>
 </head>
@@ -17,7 +17,7 @@
 
 <div id="loading" class="text-center">
     <div class="spinner-border text-primary" role="status"></div>
-    <div class="mt-2 fw-bold">Sincronizando con Base de Datos...</div>
+    <div class="mt-2 fw-bold">Aplicando lógica de colores...</div>
 </div>
 
 <div class="container-fluid" style="max-width: 1400px;">
@@ -45,7 +45,7 @@
     <div id="resultadoSeccion" class="d-none mt-4">
         <div class="card-control">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0">Diagrama de Gantt de Estados</h5>
+                <h5 class="mb-0">Diagrama de Gantt por Servicio</h5>
                 <button onclick="exportarExcel()" class="btn btn-success btn-sm">📥 Exportar Reporte</button>
             </div>
             <div class="gantt-wrapper">
@@ -59,7 +59,7 @@
                     <tr>
                         <th>Guía</th>
                         <th>Estado Actual</th>
-                        <th>Fecha del Movimiento</th>
+                        <th>Fecha</th>
                     </tr>
                 </thead>
                 <tbody id="cuerpoTabla"></tbody>
@@ -78,18 +78,13 @@
     let chartInstance = null;
     const URL_SHEET = 'https://docs.google.com/spreadsheets/d/1w3M--HlDfEsHHmtDZtkPcTFy-K8TX4OsH6mm71Ry12U/gviz/tq?tqx=out:csv&sheet=Hoja1';
 
-    // Normalización de fechas robusta
     function parseDate(dateStr) {
         if (!dateStr) return null;
         let parts = dateStr.includes('/') ? dateStr.split('/') : dateStr.split('-');
         if (parts.length !== 3) return null;
-        
         let d, m, y;
-        if (parts[0].length === 4) { // YYYY-MM-DD
-            [y, m, d] = parts;
-        } else { // DD/MM/YYYY
-            [d, m, y] = parts;
-        }
+        if (parts[0].length === 4) { [y, m, d] = parts; } 
+        else { [d, m, y] = parts; }
         return new Date(y, m - 1, d, 0, 0, 0);
     }
 
@@ -103,42 +98,31 @@
             let filtrados = [];
             if (modo === 'guias') {
                 const lista = document.getElementById('inputGuias').value.split(/[;\n]/).map(g => g.trim()).filter(g => g);
-                if (lista.length === 0) throw new Error("Escribe al menos una guía.");
                 filtrados = rawData.filter(f => lista.includes(f[1]));
             } else {
                 const fSel = document.getElementById('filtroCalendario').value;
-                if (!fSel) throw new Error("Selecciona una fecha en el calendario.");
-                
                 const guiasDelDia = rawData.filter(f => {
                     const d = parseDate(f[0]);
                     return d && d.toISOString().split('T')[0] === fSel;
                 }).map(f => f[1]);
-                
                 filtrados = rawData.filter(f => guiasDelDia.includes(f[1]));
             }
 
-            if (filtrados.length === 0) throw new Error("No se encontraron registros para la consulta.");
+            if (filtrados.length === 0) throw new Error("No hay registros.");
             renderizarTodo(filtrados);
-        } catch (e) {
-            alert(e.message);
-        } finally {
-            document.getElementById('loading').style.display = 'none';
-        }
+        } catch (e) { alert(e.message); } 
+        finally { document.getElementById('loading').style.display = 'none'; }
     }
 
     function renderizarTodo(datos) {
         const mapa = {};
         let minT = Infinity, maxT = -Infinity;
 
-        // Limpieza y búsqueda de rango temporal
         datos.filter(f => f[2] !== "Comparativa Rombo").forEach(f => {
             const dateObj = parseDate(f[0]);
             if (!dateObj) return;
-            
-            const t = dateObj.getTime();
-            minT = Math.min(minT, t);
-            maxT = Math.max(maxT, t);
-
+            minT = Math.min(minT, dateObj.getTime());
+            maxT = Math.max(maxT, dateObj.getTime());
             if (!mapa[f[1]]) mapa[f[1]] = {};
             mapa[f[1]][f[0]] = f[2];
         });
@@ -151,26 +135,19 @@
         guiasOrdenadas.forEach(guia => {
             const historial = mapa[guia];
             const fechas = Object.keys(historial).sort((a,b) => parseDate(a) - parseDate(b));
-            
-            // Tabla de resumen
-            const ultimaF = fechas[fechas.length-1];
-            cuerpo.innerHTML += `<tr><td><b>${guia}</b></td><td><span class="badge bg-primary">${historial[ultimaF]}</span></td><td>${ultimaF}</td></tr>`;
+            cuerpo.innerHTML += `<tr><td><b>${guia}</b></td><td><span class="badge bg-secondary">${historial[fechas[fechas.length-1]]}</span></td><td>${fechas[fechas.length-1]}</td></tr>`;
 
-            // Relleno de línea de tiempo
             let actual = new Date(minT);
             const fin = new Date(maxT);
-            
             while (actual <= fin) {
                 const isoStr = actual.toISOString().split('T')[0];
                 const dKey = actual.toLocaleDateString('es-ES', {year:'numeric', month:'2-digit', day:'2-digit'}).replace(/\//g, '/');
-                
-                // Buscar coincidencia en formatos DD/MM/YYYY o YYYY-MM-DD
                 const estado = historial[dKey] || historial[isoStr] || historial[isoStr.split('-').reverse().join('/')];
 
                 chartData.push({
                     x: [actual.getTime(), actual.getTime() + 86400000],
                     y: guia,
-                    estado: estado || "" // Etiqueta vacía si es hueco
+                    estado: estado || ""
                 });
                 actual.setDate(actual.getDate() + 1);
             }
@@ -191,7 +168,23 @@
                     data: puntos,
                     backgroundColor: (context) => {
                         const val = context.raw;
-                        return (val && val.estado) ? '#1a73e8' : 'rgba(0,0,0,0.03)';
+                        if (!val || !val.estado) return 'rgba(0,0,0,0.03)';
+                        
+                        const s = val.estado.toLowerCase();
+                        // Lógica de Colores Solicitada
+                        if (s.includes('nextday')) return '#1a73e8'; // Azul
+                        if (s.includes('sameday')) return '#8e24aa'; // Morado
+                        if (s.includes('mal entregado') || 
+                            s.includes('devolución') || 
+                            s.includes('3 intentos') || 
+                            s.includes('no manifestado') || 
+                            s.includes('tbm') || 
+                            s.includes('fuera de cobertura') || 
+                            s.includes('dañado') || 
+                            s.includes('sin contenido')) {
+                            return '#d32f2f'; // Rojo
+                        }
+                        return '#757575'; // Gris por defecto
                     },
                     borderWidth: 1,
                     borderColor: '#fff',
@@ -204,37 +197,19 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 scales: {
-                    x: { 
-                        type: 'time', 
-                        time: { unit: 'day', displayFormats: { day: 'dd MMM' } },
-                        min: min,
-                        max: max + 86400000,
-                        grid: { display: false }
-                    },
-                    y: { 
-                        ticks: { font: { size: 10, weight: 'bold' } }
-                    }
+                    x: { type: 'time', time: { unit: 'day', displayFormats: { day: 'dd MMM' } }, min: min, max: max + 86400000 },
+                    y: { ticks: { font: { size: 10, weight: 'bold' } } }
                 },
                 plugins: {
                     legend: { display: false },
                     datalabels: {
                         color: '#fff',
-                        font: { size: 9 },
-                        clip: true,
+                        font: { size: 8, weight: 'bold' },
                         formatter: (val) => (val && val.estado) ? val.estado : "",
-                        display: (context) => {
-                            const val = context.dataset.data[context.dataIndex];
-                            return val && val.estado !== "";
-                        }
+                        display: (ctx) => ctx.dataset.data[ctx.dataIndex].estado !== ""
                     },
                     tooltip: {
-                        callbacks: {
-                            label: (context) => {
-                                const val = context.raw;
-                                if (!val) return "";
-                                return ` Guía: ${val.y} | Estado: ${val.estado || 'Sin registro'}`;
-                            }
-                        }
+                        callbacks: { label: (ctx) => ` Estado: ${ctx.raw.estado || 'Sin registro'}` }
                     }
                 }
             }
@@ -243,13 +218,13 @@
 
     function parsearCSV(str) {
         return str.split(/\r?\n/).map(linea => {
-            const regex = /,(?=(?:(?:[^"]*"){2})*[^"]*$)/;
+            const regex = /,(?=(?:(?:[^ Dust]*"){2})*[^ Dust]*$)/;
             return linea.split(regex).map(c => c.replace(/^"|"$/g, '').trim());
         }).slice(1);
     }
 
     function exportarExcel() {
-        XLSX.writeFile(XLSX.utils.table_to_book(document.getElementById("tablaGuias")), "Reporte_Cronologia_Redpack.xlsx");
+        XLSX.writeFile(XLSX.utils.table_to_book(document.getElementById("tablaGuias")), "Cronologia_Redpack.xlsx");
     }
 </script>
 </body>
