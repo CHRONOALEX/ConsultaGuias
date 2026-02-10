@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cronología Redpack - Gantt de Colores</title>
+    <title>Cronología Redpack - Fechas Corregidas</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { background-color: #f4f7f6; padding: 20px; font-family: 'Segoe UI', sans-serif; }
         .header-ui { background: #000; color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; }
         .card-control { background: white; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); padding: 20px; margin-bottom: 20px; border: none; }
-        .gantt-wrapper { background: white; padding: 15px; border-radius: 12px; border: 1px solid #ddd; margin-bottom: 20px; height: 600px; position: relative; }
+        .gantt-wrapper { background: white; padding: 15px; border-radius: 12px; border: 1px solid #ddd; margin-bottom: 20px; height: 600px; }
         #loading { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.2); border: 1px solid #000; }
     </style>
 </head>
@@ -17,7 +17,7 @@
 
 <div id="loading" class="text-center">
     <div class="spinner-border text-primary" role="status"></div>
-    <div class="mt-2 fw-bold">Aplicando lógica de colores...</div>
+    <div class="mt-2 fw-bold">Optimizando fechas y datos...</div>
 </div>
 
 <div class="container-fluid" style="max-width: 1400px;">
@@ -29,7 +29,7 @@
         <div class="col-md-7">
             <div class="card-control h-100">
                 <label class="form-label fw-bold">1. Consultar por Guías</label>
-                <textarea id="inputGuias" class="form-control mb-2" rows="2" placeholder="Ej: 87349248; 87389195"></textarea>
+                <textarea id="inputGuias" class="form-control mb-2" rows="2" placeholder="87349248; 87389195"></textarea>
                 <button onclick="ejecutarConsulta('guias')" class="btn btn-primary w-100 fw-bold">Cargar Historial</button>
             </div>
         </div>
@@ -44,10 +44,7 @@
 
     <div id="resultadoSeccion" class="d-none mt-4">
         <div class="card-control">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0">Diagrama de Gantt por Servicio</h5>
-                <button onclick="exportarExcel()" class="btn btn-success btn-sm">📥 Exportar Reporte</button>
-            </div>
+            <h5 class="mb-3">Diagrama de Gantt (Timeline Real)</h5>
             <div class="gantt-wrapper">
                 <canvas id="ganttChart"></canvas>
             </div>
@@ -59,7 +56,7 @@
                     <tr>
                         <th>Guía</th>
                         <th>Estado Actual</th>
-                        <th>Fecha</th>
+                        <th>Fecha Registro</th>
                     </tr>
                 </thead>
                 <tbody id="cuerpoTabla"></tbody>
@@ -70,7 +67,6 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/date-fns@2.28.0/dist/date-fns.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
@@ -78,14 +74,18 @@
     let chartInstance = null;
     const URL_SHEET = 'https://docs.google.com/spreadsheets/d/1w3M--HlDfEsHHmtDZtkPcTFy-K8TX4OsH6mm71Ry12U/gviz/tq?tqx=out:csv&sheet=Hoja1';
 
-    function parseDate(dateStr) {
-        if (!dateStr) return null;
-        let parts = dateStr.includes('/') ? dateStr.split('/') : dateStr.split('-');
-        if (parts.length !== 3) return null;
+    // FUNCIÓN DE ARREGLO DE FECHAS: Convierte cualquier string a Date local medianoche
+    function toLocalDate(str) {
+        if (!str) return null;
         let d, m, y;
-        if (parts[0].length === 4) { [y, m, d] = parts; } 
-        else { [d, m, y] = parts; }
-        return new Date(y, m - 1, d, 0, 0, 0);
+        if (str.includes('/')) {
+            [d, m, y] = str.split('/');
+        } else if (str.includes('-')) {
+            let parts = str.split('-');
+            if (parts[0].length === 4) { [y, m, d] = parts; } 
+            else { [d, m, y] = parts; }
+        }
+        return new Date(y, m - 1, d, 0, 0, 0, 0); // Forzar medianoche local
     }
 
     async function ejecutarConsulta(modo) {
@@ -100,15 +100,18 @@
                 const lista = document.getElementById('inputGuias').value.split(/[;\n]/).map(g => g.trim()).filter(g => g);
                 filtrados = rawData.filter(f => lista.includes(f[1]));
             } else {
-                const fSel = document.getElementById('filtroCalendario').value;
+                const fSelStr = document.getElementById('filtroCalendario').value; // Formato YYYY-MM-DD del input
+                const fSelDate = toLocalDate(fSelStr);
+                
                 const guiasDelDia = rawData.filter(f => {
-                    const d = parseDate(f[0]);
-                    return d && d.toISOString().split('T')[0] === fSel;
+                    const dDoc = toLocalDate(f[0]);
+                    return dDoc && fSelDate && dDoc.getTime() === fSelDate.getTime();
                 }).map(f => f[1]);
+                
                 filtrados = rawData.filter(f => guiasDelDia.includes(f[1]));
             }
 
-            if (filtrados.length === 0) throw new Error("No hay registros.");
+            if (filtrados.length === 0) throw new Error("No hay registros en esa fecha.");
             renderizarTodo(filtrados);
         } catch (e) { alert(e.message); } 
         finally { document.getElementById('loading').style.display = 'none'; }
@@ -119,12 +122,15 @@
         let minT = Infinity, maxT = -Infinity;
 
         datos.filter(f => f[2] !== "Comparativa Rombo").forEach(f => {
-            const dateObj = parseDate(f[0]);
+            const dateObj = toLocalDate(f[0]);
             if (!dateObj) return;
-            minT = Math.min(minT, dateObj.getTime());
-            maxT = Math.max(maxT, dateObj.getTime());
+            const t = dateObj.getTime();
+            minT = Math.min(minT, t);
+            maxT = Math.max(maxT, t);
+
             if (!mapa[f[1]]) mapa[f[1]] = {};
-            mapa[f[1]][f[0]] = f[2];
+            // Guardamos usando el timestamp como llave para evitar errores de formato string
+            mapa[f[1]][t] = f[2]; 
         });
 
         const guiasOrdenadas = Object.keys(mapa).sort();
@@ -134,18 +140,22 @@
 
         guiasOrdenadas.forEach(guia => {
             const historial = mapa[guia];
-            const fechas = Object.keys(historial).sort((a,b) => parseDate(a) - parseDate(b));
-            cuerpo.innerHTML += `<tr><td><b>${guia}</b></td><td><span class="badge bg-secondary">${historial[fechas[fechas.length-1]]}</span></td><td>${fechas[fechas.length-1]}</td></tr>`;
+            const timestamps = Object.keys(historial).map(Number).sort((a,b) => a - b);
+            
+            // Tabla: Último estado
+            const ultT = timestamps[timestamps.length - 1];
+            const ultFechaStr = new Date(ultT).toLocaleDateString('es-ES');
+            cuerpo.innerHTML += `<tr><td><b>${guia}</b></td><td>${historial[ultT]}</td><td>${ultFechaStr}</td></tr>`;
 
+            // Relleno Gantt: Día por día entre el rango global
             let actual = new Date(minT);
             const fin = new Date(maxT);
             while (actual <= fin) {
-                const isoStr = actual.toISOString().split('T')[0];
-                const dKey = actual.toLocaleDateString('es-ES', {year:'numeric', month:'2-digit', day:'2-digit'}).replace(/\//g, '/');
-                const estado = historial[dKey] || historial[isoStr] || historial[isoStr.split('-').reverse().join('/')];
+                const currentT = actual.getTime();
+                const estado = historial[currentT];
 
                 chartData.push({
-                    x: [actual.getTime(), actual.getTime() + 86400000],
+                    x: [currentT, currentT + 86400000],
                     y: guia,
                     estado: estado || ""
                 });
@@ -166,29 +176,15 @@
             data: {
                 datasets: [{
                     data: puntos,
-                    backgroundColor: (context) => {
-                        const val = context.raw;
-                        if (!val || !val.estado) return 'rgba(0,0,0,0.03)';
-                        
-                        const s = val.estado.toLowerCase();
-                        // Lógica de Colores Solicitada
-                        if (s.includes('nextday')) return '#1a73e8'; // Azul
-                        if (s.includes('sameday')) return '#8e24aa'; // Morado
-                        if (s.includes('mal entregado') || 
-                            s.includes('devolución') || 
-                            s.includes('3 intentos') || 
-                            s.includes('no manifestado') || 
-                            s.includes('tbm') || 
-                            s.includes('fuera de cobertura') || 
-                            s.includes('dañado') || 
-                            s.includes('sin contenido')) {
-                            return '#d32f2f'; // Rojo
-                        }
-                        return '#757575'; // Gris por defecto
+                    backgroundColor: (ctx) => {
+                        const s = (ctx.raw && ctx.raw.estado) ? ctx.raw.estado.toLowerCase() : "";
+                        if (!s) return 'rgba(0,0,0,0.03)';
+                        if (s.includes('nextday')) return '#1a73e8';
+                        if (s.includes('sameday')) return '#8e24aa';
+                        if (s.includes('mal') || s.includes('dev') || s.includes('no m') || s.includes('fuera') || s.includes('dañ') || s.includes('sin c')) return '#d32f2f';
+                        return '#757575';
                     },
-                    borderWidth: 1,
-                    borderColor: '#fff',
-                    barPercentage: 0.8
+                    borderWidth: 1, borderColor: '#fff', barPercentage: 0.8
                 }]
             },
             plugins: [ChartDataLabels],
@@ -203,13 +199,9 @@
                 plugins: {
                     legend: { display: false },
                     datalabels: {
-                        color: '#fff',
-                        font: { size: 8, weight: 'bold' },
-                        formatter: (val) => (val && val.estado) ? val.estado : "",
-                        display: (ctx) => ctx.dataset.data[ctx.dataIndex].estado !== ""
-                    },
-                    tooltip: {
-                        callbacks: { label: (ctx) => ` Estado: ${ctx.raw.estado || 'Sin registro'}` }
+                        color: '#fff', font: { size: 8, weight: 'bold' },
+                        formatter: (val) => val.estado || "",
+                        display: (ctx) => ctx.raw.estado !== ""
                     }
                 }
             }
@@ -218,13 +210,9 @@
 
     function parsearCSV(str) {
         return str.split(/\r?\n/).map(linea => {
-            const regex = /,(?=(?:(?:[^ Dust]*"){2})*[^ Dust]*$)/;
+            const regex = /,(?=(?:(?:[^"]*"){2})*[^"]*$)/;
             return linea.split(regex).map(c => c.replace(/^"|"$/g, '').trim());
         }).slice(1);
-    }
-
-    function exportarExcel() {
-        XLSX.writeFile(XLSX.utils.table_to_book(document.getElementById("tablaGuias")), "Cronologia_Redpack.xlsx");
     }
 </script>
 </body>
