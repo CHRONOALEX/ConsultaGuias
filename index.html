@@ -3,85 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard de Consulta Masiva</title>
+    <title>Cronología de Paquetes Redpack</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background-color: #f0f2f5; padding-top: 30px; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
-        .card { border: none; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-        .btn-primary { background-color: #1a73e8; border: none; font-weight: 600; }
-        .badge-guia { background-color: #e8f0fe; color: #1967d2; font-weight: bold; padding: 5px 10px; border-radius: 4px; }
-        .kpi-card { background: #fff; border-left: 5px solid #1a73e8; }
-        #graficoContenedor { position: relative; height: 300px; width: 100%; }
+        body { background-color: #f8f9fa; padding: 20px; font-family: 'Segoe UI', sans-serif; }
+        .card { border: none; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .table-container { background: white; border-radius: 12px; overflow: hidden; }
+        .badge-guia { background-color: #e8f0fe; color: #1967d2; font-weight: bold; padding: 4px 8px; border-radius: 4px; font-size: 0.9em; }
+        .sparkline-container { width: 120px; height: 30px; }
+        .header-ui { background: #000000; color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; }
+        .filter-bar { background: #fff; padding: 15px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #dee2e6; }
+        #loading { display: none; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="card p-4 mb-4">
-        <h2 class="text-center mb-4">📊 Consulta de Guías</h2>
-        
+<div class="container-fluid" style="max-width: 1200px;">
+    <div class="header-ui text-center">
+        <h2 class="mb-0">Cronología de Paquetes Redpack</h2>
+    </div>
+
+    <div class="card p-4">
         <div class="mb-3">
-            <label class="form-label fw-bold">Ingresar Números de Guía</label>
-            <textarea id="inputGuias" class="form-control" rows="3" placeholder="Pegue sus guías aquí (separadas por ; o enter)"></textarea>
+            <label class="form-label fw-bold">Entrada de Datos (Pegar Guías)</label>
+            <textarea id="inputGuias" class="form-control" rows="2" placeholder="Ej: 8012345; 9012345;"></textarea>
         </div>
-
-        <button onclick="realizarConsulta()" class="btn btn-primary w-100 py-2" id="btnBusqueda">
-            CONSULTAR Y GENERAR REPORTE
-        </button>
-
-        <div id="loading" class="text-center my-4" style="display: none;">
-            <div class="spinner-border text-primary" role="status"></div>
-            <p class="mt-2 text-muted">Procesando datos...</p>
+        <button onclick="realizarConsulta()" class="btn btn-primary w-100 fw-bold" id="btnBusqueda">1. Cargar Datos Generales</button>
+        
+        <div id="loading" class="text-center mt-3">
+            <div class="spinner-border text-primary spinner-border-sm" role="status"></div>
+            <span class="ms-2 text-muted">Buscando en base de datos...</span>
         </div>
     </div>
 
-    <div id="errorDiv" class="alert alert-danger d-none mb-4"></div>
-
     <div id="resultadoSeccion" class="d-none">
-        <div class="row mb-4">
-            <div class="col-md-4">
-                <div class="card kpi-card p-3">
-                    <small class="text-muted text-uppercase fw-bold">Total Guías</small>
-                    <h2 id="statTotal" class="mb-0">0</h2>
-                </div>
+        <div class="filter-bar row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label small fw-bold">Ver por Fecha Específica:</label>
+                <input type="date" id="filtroCalendario" class="form-control">
             </div>
-            <div class="col-md-8">
-                <div class="card p-3 h-100">
-                    <div class="row align-items-center">
-                        <div class="col-md-6">
-                            <label class="form-label small fw-bold">Filtrar por Servicio:</label>
-                            <select id="selectServicio" class="form-select form-select-sm" onchange="filtrarResultados()">
-                                <option value="todos">Todos los servicios</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6 text-end">
-                            <button onclick="exportarExcel()" class="btn btn-success btn-sm mt-3">📥 Descargar Excel</button>
-                        </div>
-                    </div>
-                </div>
+            <div class="col-md-3">
+                <button onclick="filtrarPorFecha()" class="btn btn-dark w-100">Filtrar por Fecha</button>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-bold">Servicio:</label>
+                <select id="selectServicio" class="form-select" onchange="filtrarResultados()">
+                    <option value="todos">Todos los Servicios</option>
+                </select>
+            </div>
+            <div class="col-md-3 text-end">
+                <button onclick="exportarExcel()" class="btn btn-success w-100">📥 Exportar Excel</button>
             </div>
         </div>
 
-        <div class="card p-3 mb-4">
-            <h6 class="fw-bold mb-3">Tendencia por Fechas</h6>
-            <div id="graficoContenedor">
-                <canvas id="graficoFechas"></canvas>
-            </div>
-        </div>
-
-        <div class="card p-0 overflow-hidden">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0" id="tablaGuias">
-                    <thead class="table-dark">
-                        <tr>
-                            <th>Fecha</th>
-                            <th>Número de Guía</th>
-                            <th>Servicio</th>
-                        </tr>
-                    </thead>
-                    <tbody id="cuerpoTabla"></tbody>
-                </table>
-            </div>
+        <div class="table-container shadow-sm">
+            <table class="table table-hover align-middle mb-0" id="tablaGuias">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Guía</th>
+                        <th>Servicio en Fecha</th>
+                        <th>Fecha de Registro</th>
+                        <th style="width: 150px;">Track Completo (Sparkline)</th>
+                    </tr>
+                </thead>
+                <tbody id="cuerpoTabla"></tbody>
+            </table>
         </div>
     </div>
 </div>
@@ -91,47 +77,127 @@
 
 <script>
     const URL_SHEET = 'https://docs.google.com/spreadsheets/d/1w3M--HlDfEsHHmtDZtkPcTFy-K8TX4OsH6mm71Ry12U/gviz/tq?tqx=out:csv&sheet=Hoja1';
-    
-    let datosGlobales = [];
-    let miGrafico = null;
+    let datosProcesados = []; // Aquí guardamos el historial total por guía
 
     async function realizarConsulta() {
         const input = document.getElementById('inputGuias').value;
-        const loader = document.getElementById('loading');
-        const errorDiv = document.getElementById('errorDiv');
-        const btn = document.getElementById('btnBusqueda');
+        if (!input.trim()) return alert("Por favor, ingresa números de guía.");
 
-        if (!input.trim()) return alert("Ingresa guías primero.");
-
-        loader.style.display = 'block';
-        errorDiv.classList.add('d-none');
-        btn.disabled = true;
-
+        document.getElementById('loading').style.display = 'block';
         const guiasUsuario = input.split(/[;\n]/).map(g => g.trim()).filter(g => g !== "");
 
         try {
             const response = await fetch(URL_SHEET);
             const textoCSV = await response.text();
-            const filas = parsearCSV(textoCSV);
+            const filasRaw = parsearCSV(textoCSV);
 
-            datosGlobales = filas.filter(f => guiasUsuario.includes(String(f[1]).trim()));
+            // 1. Filtrar y Omitir "Comparativa Rombo"
+            const filtrados = filasRaw.filter(f => 
+                guiasUsuario.includes(f[1]) && f[2] !== "Comparativa Rombo"
+            );
 
-            if (datosGlobales.length === 0) {
-                errorDiv.textContent = "No se encontraron coincidencias.";
-                errorDiv.classList.remove('d-none');
-                document.getElementById('resultadoSeccion').classList.add('d-none');
-            } else {
-                poblarSelector(datosGlobales);
-                aplicarVisualizacion(datosGlobales);
-                document.getElementById('resultadoSeccion').classList.remove('d-none');
-            }
-        } catch (err) {
-            errorDiv.textContent = "Error al conectar con los datos: " + err.message;
-            errorDiv.classList.remove('d-none');
+            // 2. Lógica Anti-duplicados (Toma el último servicio del día)
+            const mapaTemporal = {};
+            filtrados.forEach(f => {
+                const [fecha, guia, servicio] = f;
+                if (!mapaTemporal[guia]) mapaTemporal[guia] = {};
+                mapaTemporal[guia][fecha] = servicio; 
+            });
+
+            // 3. Procesar datos para tener historial total vs visualización
+            datosProcesados = Object.keys(mapaTemporal).map(numGuia => {
+                const historialMap = mapaTemporal[numGuia];
+                const fechasOrdenadas = Object.keys(historialMap).sort((a,b) => new Date(a) - new Date(b));
+                
+                return {
+                    guia: numGuia,
+                    fechasDisponibles: fechasOrdenadas,
+                    historialDetallado: historialMap, // { "2024-01-01": "Servicio A" }
+                    // Datos para el Sparkline (Total de la vida de la guía)
+                    sparklineData: fechasOrdenadas.map(f => ({x: f, y: 1}))
+                };
+            });
+
+            poblarSelector();
+            mostrarResultados(datosProcesados); // Por defecto muestra todo lo cargado
+            document.getElementById('resultadoSeccion').classList.remove('d-none');
+        } catch (e) {
+            console.error(e);
+            alert("Error al conectar con la base de datos.");
         } finally {
-            loader.style.display = 'none';
-            btn.disabled = false;
+            document.getElementById('loading').style.display = 'none';
         }
+    }
+
+    // Nueva función para enlistar por fecha seleccionada
+    function filtrarPorFecha() {
+        const fechaBusqueda = document.getElementById('filtroCalendario').value;
+        if (!fechaBusqueda) return alert("Selecciona una fecha en el calendario.");
+
+        // Convertir fecha del input (YYYY-MM-DD) al formato de tus datos si es necesario
+        // Aquí asumimos coincidencia de texto, si tu CSV usa DD/MM/YYYY podrías necesitar un reformateo
+        
+        const filtrados = datosProcesados.filter(item => 
+            item.fechasDisponibles.includes(fechaBusqueda)
+        );
+
+        if (filtrados.length === 0) {
+            alert("No hay registros para esa fecha específica.");
+        } else {
+            mostrarResultados(filtrados, fechaBusqueda);
+        }
+    }
+
+    function mostrarResultados(lista, fechaFiltro = null) {
+        const cuerpo = document.getElementById('cuerpoTabla');
+        cuerpo.innerHTML = "";
+
+        lista.forEach((item, index) => {
+            // Si hay un filtro de fecha, mostramos el servicio de esa fecha, 
+            // si no, mostramos el último registrado.
+            const fechaAMostrar = fechaFiltro || item.fechasDisponibles[item.fechasDisponibles.length - 1];
+            const servicioAMostrar = item.historialDetallado[fechaAMostrar];
+
+            const canvasId = `chart-${index}`;
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><span class="badge-guia">${item.guia}</span></td>
+                <td><span class="badge bg-info text-dark">${servicioAMostrar}</span></td>
+                <td class="small">${fechaAMostrar}</td>
+                <td>
+                    <div class="sparkline-container">
+                        <canvas id="${canvasId}"></canvas>
+                    </div>
+                </td>
+            `;
+            cuerpo.appendChild(tr);
+            
+            // Renderizar Sparkline con TODO el historial, sin importar el filtro de fecha
+            crearSparkline(canvasId, item.fechasDisponibles, item.fechasDisponibles.map(() => 1));
+        });
+    }
+
+    function crearSparkline(id, labels, data) {
+        const ctx = document.getElementById(id).getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: '#1a73e8',
+                    barThickness: 5
+                }]
+            },
+            options: {
+                plugins: { legend: { display: false }, tooltip: { 
+                    callbacks: { label: (context) => `Movimiento: ${labels[context.dataIndex]}` }
+                }},
+                scales: { x: { display: false }, y: { display: false, beginAtZero: true } },
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
     }
 
     function parsearCSV(str) {
@@ -141,64 +207,25 @@
         }).slice(1);
     }
 
-    function poblarSelector(datos) {
+    function poblarSelector() {
         const select = document.getElementById('selectServicio');
-        const servicios = [...new Set(datos.map(f => f[2]))];
-        select.innerHTML = '<option value="todos">Todos los servicios</option>';
-        servicios.forEach(s => {
-            if(s) select.innerHTML += `<option value="${s}">${s}</option>`;
-        });
+        const servicios = [...new Set(datosProcesados.map(d => d.historialDetallado[d.fechasDisponibles[d.fechasDisponibles.length-1]]))];
+        select.innerHTML = '<option value="todos">Todos los Servicios</option>';
+        servicios.forEach(s => { if(s) select.innerHTML += `<option value="${s}">${s}</option>`; });
     }
 
     function filtrarResultados() {
-        const servicio = document.getElementById('selectServicio').value;
-        const filtrados = servicio === "todos" 
-            ? datosGlobales 
-            : datosGlobales.filter(f => f[2] === servicio);
-        aplicarVisualizacion(filtrados);
-    }
-
-    function aplicarVisualizacion(datos) {
-        const cuerpo = document.getElementById('cuerpoTabla');
-        cuerpo.innerHTML = "";
-        const conteoFechas = {};
-
-        datos.forEach(f => {
-            cuerpo.innerHTML += `<tr>
-                <td>${f[0]}</td>
-                <td><span class="badge-guia">${f[1]}</span></td>
-                <td>${f[2]}</td>
-            </tr>`;
-            conteoFechas[f[0]] = (conteoFechas[f[0]] || 0) + 1;
-        });
-
-        document.getElementById('statTotal').textContent = datos.length;
-        renderizarGrafico(Object.keys(conteoFechas).sort(), Object.values(conteoFechas));
-    }
-
-    function renderizarGrafico(labels, data) {
-        const ctx = document.getElementById('graficoFechas').getContext('2d');
-        if (miGrafico) miGrafico.destroy();
-        miGrafico = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Cantidad de Guías',
-                    data: data,
-                    backgroundColor: '#1a73e8',
-                    borderRadius: 5
-                }]
-            },
-            options: { responsive: true, maintainAspectRatio: false }
-        });
+        const val = document.getElementById('selectServicio').value;
+        const filtrados = val === "todos" ? datosProcesados : datosProcesados.filter(d => 
+            d.historialDetallado[d.fechasDisponibles[d.fechasDisponibles.length-1]] === val
+        );
+        mostrarResultados(filtrados);
     }
 
     function exportarExcel() {
         const wb = XLSX.utils.table_to_book(document.getElementById("tablaGuias"));
-        XLSX.writeFile(wb, "Reporte_Guias.xlsx");
+        XLSX.writeFile(wb, "Reporte_Filtro_Fecha.xlsx");
     }
 </script>
-
 </body>
 </html>
